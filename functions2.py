@@ -13,6 +13,7 @@ from tqdm.notebook import tqdm
 from datetime import datetime
 import urllib
 from typing import Dict, Any
+from html import unescape
 
 # Load the spaCy model
 nlp = spacy.load("en_core_web_sm")
