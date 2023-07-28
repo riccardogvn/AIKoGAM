@@ -18,6 +18,14 @@ from typing import Dict, Any
 nlp = spacy.load("en_core_web_sm")
 now = datetime.now()
 date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
+now = datetime.now()
+date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
+directory = rf'/logs/run' 
+os.makedirs(directory, exist_ok=True)
+filename = f'{directory}.json'
+# Set up logging
+log_file = f'{directory}_{datetime.now().strftime("%d%m%Y_%H%M")}_log.txt'
+logging.basicConfig(filename=f'{directory}_{datetime.now().strftime("%d%m%Y_%H%M_%S")}_log.txt', level=logging.ERROR)
 
 def format_date(input_date):
     try:
@@ -178,14 +186,7 @@ def scrape_lots(event, storeImage):
 
 
 def collect_sales(start_year, end_year, filename, log_file, storeImage=False):
-    now = datetime.now()
-    date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
-    directory = f'data_christies_{date_and_hour}' 
-    os.makedirs(directory, exist_ok=True)
-    filename = f'{directory}.json'
-    # Set up logging
-    log_file = f'{directory}_{datetime.now().strftime("%d%m%Y_%H%M")}_log.txt'
-    logging.basicConfig(filename=f'{directory}_{datetime.now().strftime("%d%m%Y_%H%M_%S")}_log.txt', level=logging.ERROR)
+    
     antiquities = []
     errors = []
 
