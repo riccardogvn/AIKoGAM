@@ -429,7 +429,7 @@ def collect_sales_sothebys(auctionIds, storeImage=False):
                     img_link = lot['data']['lotV2']['media']['images'][0]['renditions'][0]['url']
                 if storeImage:
                     try:
-                        localPath = save_image(img_link, rf"\\images_\chri_{str(date_and_hour)}")
+                        localPath = save_image(img_link, rf"\\images_\sothe_{str(date_and_hour)}")
                     except Exception as e:
                         localPath = None
                         logging.error(f"Exception occurred while saving image for lot {lot['object_id']}: {str(e)}")
@@ -606,7 +606,7 @@ def collectPAA(storeImage=False):
             data['image'] = image_link
             if storeImage:
                 try:
-                    data['local_image'] = saveImagePAA(image_link, r"\PAA_Images\\")
+                    data['local_image'] = saveImagePAA(image_link, rf"\\images_\paa_{str(date_and_hour)}")
                 except:
                     pass
             else:
