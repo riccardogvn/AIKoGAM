@@ -737,10 +737,8 @@ def map_sothebys_data(data):
                                 else:
                                     final_x[f'lot{object.capitalize()}'] = elemdict
 
-                    final_x['lotProvenance'][f'provenance_{str(len(final_x["lotProvenance"]) + 1)}'] = lot[
-                        'designationLine']
-                    final_x['lotProvenance'][f'provenance_{str(len(final_x["lotProvenance"]) + 1)}'] = \
-                        final_x['lotReference']
+                    final_x['lotProvenance'][f'provenance_{str(len(final_x["lotProvenance"]) + 1)}'] = lot['designationLine']
+                    final_x['lotProvenance'][f'provenance_{str(len(final_x["lotProvenance"]) + 1)}'] = final_x['lotReference']
                     saleLots.append(final_x)
                 final_item['saleLots'] = saleLots
             final_data.append(final_item)
@@ -881,8 +879,7 @@ def remap_paa_data(paa_data):
         try:
             saleLots = [remap_paa_lot(item)]
             paa_entity = {
-                'gallery': 'Phoenix Ancient Art',
-                'saleRef': item['saleRef'],
+                'gallery': 'Phoenix Ancient Art',                
                 'saleLots': saleLots
             }
             final_data.append(paa_entity)
