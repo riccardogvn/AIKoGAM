@@ -636,7 +636,7 @@ def collectPAA(storeImage=False):
         '''except Exception:
            debug.append(woa)
     '''
-        with open('PAA.json', 'w') as file:
+        with open('paa_raw.json', 'w') as file:
             json.dump(woas_db, file)
 
     return woas_db
