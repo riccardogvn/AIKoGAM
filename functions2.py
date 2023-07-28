@@ -816,3 +816,79 @@ def remap_christies_data(data):
 
     return final_data
 
+from datetime import datetime
+
+def remap_paa_lot(item):
+    lot = {
+        'lotId': item['reference'],
+        'lotNumber': item['reference'],
+        'lotUrl': item['url'],
+        'lotTitle': item['title'],
+        'lotSubtitle': item['subtitle'],
+    }
+
+    if len(item['price']) > 1:
+        lot['lotPrice'] = item['price']['price']
+        lot['lotCurrency'] = item['price']['currency']
+    else:
+        lot['lotPrice'] = item['price']
+        lot['lotCurrency'] = dict()
+
+    lot['lotImage'] = item['image']
+    lot['lotImageLocalPath'] = item['local_image']
+    lot['lotProvenance'] = item['provenance']
+    lot['lotExhibited'] = item['exhibited']
+
+    literature = []
+    if 'published' in item:
+        if item['published']:
+            for k, v in item['published'].items():
+                literature.append(v)
+    if 'bibliography' in item:
+        if item['bibliography']:
+            for k, v in item['bibliography'].items():
+                literature.append(v)
+
+    litdict = {f'literature_{i}': lit for i, lit in enumerate(literature)}
+    lot['lotLiterature'] = litdict
+    lot['lotLastOwner'] = 'Phoenix Ancient Art'
+
+    uber = f'{lot["lotLastOwner"]} {datetime.now().strftime("%Y")}'
+    if 'page_modified' in item:
+        date = datetime.strptime(item['page_modified'], '%Y-%m-%dT%H:%M:%S+00:00').strftime('%d %B %Y')
+    else:
+        date = datetime.now().strftime('%d %B %Y')
+
+    ref = f'{lot["lotLastOwner"]} lot {item["reference"]} {date}'
+    lot['saleRef'] = ref
+
+    lot['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"]) + 1)}'] = f'{lot["lotLastOwner"]} {date} - {datetime.now().strftime("%d %B %Y")}'
+    lot['lotWithdrawn'] = {}
+    lot['lotDescription'] = item['overview']
+    lot['lotCondition'] = item['condition']
+    lot['lotDetails'] = {}
+
+    if 'material' in item:
+        lot['lotDetails']['material'] = item['material']
+    if 'dimensions' in item:
+        lot['lotDetails']['dimensions'] = item['dimensions']
+
+    return lot
+
+def remap_paa_data(paa_data):
+    final_data = []
+    for item in tqdm(paa_data, desc='Remapping PAA data'):  # Adding tqdm progress bar
+        try:
+            saleLots = [remap_paa_lot(item)]
+            paa_entity = {
+                'gallery': 'Phoenix Ancient Art',
+                'saleRef': item['saleRef'],
+                'saleLots': saleLots
+            }
+            final_data.append(paa_entity)
+        except Exception as e:
+            logging.error(f"Error occurred in remap_paa_data: {str(e)}")
+
+    return final_data
+
+
