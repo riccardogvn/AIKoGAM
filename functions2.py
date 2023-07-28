@@ -793,7 +793,7 @@ def remap_christies_data(data):
                     'lotReference': f'{final_item["saleRef"]} lot {lot["lot_id_txt"]}',
                 }
                 
-                final_x['lotProvenance'] = dict()
+                
                 for object in ['details','lot_essay','provenance','literature','exhibited','special_notice','others']:
                     if object in lot['objects']:
                         if '_' in object:
@@ -803,9 +803,14 @@ def remap_christies_data(data):
                             final_x[f'lot{object.capitalize()}'] = lot['objects'][object]
                     else:
                         final_x[f'lot{object.capitalize()}'] = dict()
-                final_x['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"])+1)}'] = lot['consigner_information']
-                final_x['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"])+1)}'] = final_x['lotReference']
-                saleLots.append(lot)
+                if 'lotProvenance' in final_x:                  
+                  final_x['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"])+1)}'] = lot['consigner_information']
+                  final_x['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"])+1)}'] = final_x['lotReference']
+                else:
+                  final_x['lotProvenance'] = {'provenance_0':lot['consigner_information'],'provenance_1': final_x['lotReference']}
+                  
+
+                saleLots.append(final_x)
             final_item['saleLots'] = saleLots
             final_data.append(final_item)
 
