@@ -186,7 +186,7 @@ def scrape_lots(event, storeImage):
     return event_data, lots_data
 
 
-def collect_sales(start_year, end_year, filename, log_file, storeImage=False):
+def collect_sales(start_year, end_year, log_file, storeImage=False):
     
     antiquities = []
     errors = []
@@ -212,7 +212,7 @@ def collect_sales(start_year, end_year, filename, log_file, storeImage=False):
                             event_data['reference'] = f"{event_data['auction']} {format_date(event_data['start_date'])}"
     
                             antiquities.append(event_data)
-                            with open(filename, 'w') as file:
+                            with open('christies_raw.json', 'w') as file:
                                 json.dump(antiquities, file)
                     print(f'Finished getting data from {url}, now moving to {str(month + 1)}')
                     print(event['title_txt'])
@@ -226,7 +226,7 @@ def collect_sales(start_year, end_year, filename, log_file, storeImage=False):
                 logging.error(f"Exception occurred while fetching data from {url}: {str(e)}")
                 time.sleep(random.uniform(1, 5))
 
-    with open(filename, 'w') as file:
+    with open('christies_raw.json', 'w') as file:
         json.dump(antiquities, file)
 
     print(f"Data scraped successfully. Log file: {log_file}")
