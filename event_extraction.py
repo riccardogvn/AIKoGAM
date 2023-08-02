@@ -130,7 +130,7 @@ def extract_store_events(ner_model, directory, json_object_level = 0, event_sepa
             data = json.load(input_f)
               
             # Iterating through the json list
-            for k,v in data['lots'].items():
+            for k,v in tqdm(data['lots'].items(),desc='Processing Lots'):
                 json_object = v
                 prov = v['lotProvenance']
                                 
@@ -220,7 +220,7 @@ def extract_store_events_from_events(ner_model, directory, json_object_level = 0
             data = json.load(input_f)
             
             # Iterating through the json list
-            for k,v in data['events'].items():
+            for k,v in tqdm(data['events'].items(), desc='Processing events'):
                 json_object = v
                 
                                 
