@@ -6,8 +6,10 @@ Created on Mon Dec  5 13:34:05 2022
 """
 
 neo4j = {
-    "uri":"bolt://localhost:7687",
+    "uri":"bolt://localhost:7687/prova",
     "username": "neo4j",
     "password": "admin",
     "encrypted": False
 }
+
+
