@@ -179,7 +179,7 @@ def main():
             return count(rel) as result
             '''
     db_connection.additionalQuery(query)
-    db_connection.actorsFromEvent():
+    db_connection.actorsFromEvent()
 
 if __name__ == "__main__":
     main()
