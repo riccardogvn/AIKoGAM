@@ -286,7 +286,7 @@ if __name__ == "__main__":
     for conf in ds_config:
         artwork_index = extract_store_events_from_events(ner_model, conf['ds'], artwork_index)
         
-    print("Total number of provenance artwork", artwork_index)       
+    print("Job done")       
     
 
   
