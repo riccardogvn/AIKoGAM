@@ -9,6 +9,7 @@ import json
 import re
 import spacy
 from src.utils import utils
+import tqdm
 
 
 def extract_events_dot(text):
