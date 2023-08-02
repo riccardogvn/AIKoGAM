@@ -114,10 +114,14 @@ def main():
      
     with open(file, newline='', encoding="utf8") as jsonfile:
         lines = jsonfile.readlines()
-        hashes = db_connection.take_hashes()
-        hash_ids = []
-        for hash in hashes:
-            hash_ids.append(hash['a.artwork_id'])
+        count = db_connection.check_db()
+        if count == 0:
+            hash_ids = ['no_data']
+        else:
+            hashes = db_connection.take_hashes()
+            hash_ids = []
+            for hash in hashes:
+                hash_ids.append(hash['a.artwork_id'])
             
         
         
@@ -133,8 +137,7 @@ def main():
                 
                 if json_object['lotHash'] in hash_ids:
                     pass
-                else:
-                
+                else:                
                     json_object['_events'] = json_object['events']
                     json_object.pop('events')
                     json_object['events'] = []
