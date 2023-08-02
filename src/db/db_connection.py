@@ -299,6 +299,60 @@ class DB_Connection(object):
             except Exception as e:
                 print("Exception: {0}".format(e))
                 return self._error_status
-            
         return self._success_status
+
+    def actorsFromEvent(self):
+        propertiesDates = ['DATE','END_DATE','START_DATE']
+        propertiesActors = ['ORG','PERSON']
+        propertiesLocations = ['GPE','LANGUAGE','LOC','NORP']
+        propertiesOther = ['EVENT','FAC','LAW','MONEY','ORDINAL','PRODUCT','WORK_OF_ART']
+        for i in propertiesDates:
+            query = "MATCH (e:event) WHERE"
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:date "
+            query += "{name:"
+            query += f" {i}"
+            query += '''}) FOREACH (event in events |
+                MERGE (event)-[:HAS_'''
+            query += f'{i}]->(g) )
+                    
+            with self._driver.session() as session:
+                tx = session. begin_transaction()
+                tx.run(query)
+                tx.commit()
+        for i in propertiesLocations:
+            query = "MATCH (e:event) WHERE"
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:location "
+            query += "{name:"
+            query += f" {i}"
+            query += '''}) FOREACH (event in events |
+                MERGE (event)-[:HAS_LOCATION]->(g) )'''      
+            with self._driver.session() as session:
+                tx = session. begin_transaction()
+                tx.run(query)
+                tx.commit()
+        for i in propertiesActors:
+            query = "MATCH (e:event) WHERE"
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:actor "
+            query += "{name:"
+            query += f" {i}"
+            query += '''}) FOREACH (event in events |
+                MERGE (event)<-[:PARTECIPATED_TO]-(g) )'''      
+            with self._driver.session() as session:
+                tx = session. begin_transaction()
+                tx.run(query)
+                tx.commit()
+        for i in propertiesOther:
+            query = "MATCH (e:event) WHERE"
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:other "
+            query += "{name:"
+            query += f" {i}"
+            query += '''}) FOREACH (event in events |
+                MERGE (event)<-[:RELATED_TO]-(g) )'''      
+            with self._driver.session() as session:
+                tx = session. begin_transaction()
+                tx.run(query)
+                tx.commit()
+                
+            
+        
                             
