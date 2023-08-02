@@ -942,6 +942,7 @@ def remap_christies_data(data):
                   final_x['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"])+1)}'] = lot['consigner_information']
                   final_x['lotProvenance'][f'provenance_{str(len(lot["lotProvenance"])+1)}'] = final_x['lotReference']
                 else:
+                  final_x['lotProvenance'] = dict()
                   final_x['lotProvenance'] = {'provenance_0':lot['consigner_information'],'provenance_1': final_x['lotReference']}
                   
 
