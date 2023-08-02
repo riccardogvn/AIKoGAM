@@ -278,7 +278,7 @@ if __name__ == "__main__":
     
     # Handle different datasets
     ds_config = []
-    ds_config.append({'ds':'datasets/'})
+    ds_config.append({'ds':'AIKoGAM/datasets/'})
 
     artwork_index = 0
     for conf in ds_config:
