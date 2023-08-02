@@ -73,10 +73,19 @@ class DB_Connection(object):
             c = tx.run(query)
             c = c.data()
             tx.commit() 
-            
-            
+                     
             
         return c
+
+    def check_db(self):
+        with self._driver.session() as session:
+            tx = session.begin_transaction()
+            query = "USE prova MATCH (n) RETURN count(n)"
+            result = tx.run(query)
+            results = result.data()
+            datum = results[0]['count(n)']
+                
+        return datum
     
             
     def add_node(self, node_type, node_id, data):
