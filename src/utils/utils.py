@@ -171,6 +171,8 @@ def format_date(input_date):
     except ValueError:
         return "Invalid date format."
 
+
+
 def dict_hash(dictionary: Dict[str, Any]) -> str:
     """sha512 hash of a dictionary."""
     dhash = hashlib.sha512()
