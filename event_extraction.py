@@ -257,7 +257,7 @@ def extract_store_events_from_events(ner_model, directory, json_object_level = 0
                         
                             
                             # Store artwork data in JSON format
-                        with open('events/events_.txt', 'a', encoding="utf-8") as output_f:
+                        with open('events/events.txt', 'a', encoding="utf-8") as output_f:
                             json_object["events"] = artwork_events
                             json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
                             output_f.write(json_str + "\n")
