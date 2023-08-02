@@ -173,13 +173,13 @@ def extract_store_events(ner_model, directory, json_object_level = 0, event_sepa
                             events_of_artworks.append(artwork_events)
                             
                             # Store artwork data in JSON format
-                        with open('events/events.txt', 'a', encoding="utf-8") as output_f:
+                        with open('AIKoGAM/events/events.txt', 'a', encoding="utf-8") as output_f:
                             json_object["events"] = events_of_artworks
                             json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
                             output_f.write(json_str + "\n")
                             artwork_index += 1
                     except Exception:
-                        with open('events/events.txt', 'a', encoding="utf-8") as output_f:
+                        with open('AIKoGAM/events/events.txt', 'a', encoding="utf-8") as output_f:
                             json_object["events"] = ""
                             json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
                             output_f.write(json_str + "\n")
