@@ -1,9 +1,11 @@
-# PROVENANCE-KG: A Knowledge Graph of Artworks and Provenance Events
+# AIKoGAM
+An AI-driven Knowledge Graph of the Antiquities market: toward automatised methods to identify illicit trafficking networks
 
-This project allows the extraction of events from artwork provenance into a Knowledge Graph (KG). The KG connects artworks through the common events.
+This allows the extraction of events from artwork provenance into a Knowledge Graph (KG). The KG connects artworks through the common events.
 
 Author: \
 Hebatallah Mohamed (hebatallah.mohamed@iit.it)
+Riccardo Giovanelli (riccardo.giovanelli@unive.it)
 
 
 ## Installation:
@@ -13,7 +15,7 @@ Hebatallah Mohamed (hebatallah.mohamed@iit.it)
 neo4j = {
     "uri":"bolt://localhost:7687",
     "username": "neo4j",
-    "password": "admin",
+    "password": "admininstrator",
     "encrypted": False
 }
 ```
