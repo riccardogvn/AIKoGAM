@@ -21,7 +21,7 @@ from datetime import datetime
 import urllib
 from typing import Dict, Any
 from html import unescape
-
+import hashlib
 
 def remove_dots(text):
     '''
