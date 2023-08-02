@@ -86,6 +86,15 @@ class DB_Connection(object):
             datum = results[0]['count(n)']
                 
         return datum
+
+    def additionalQuery(self, query):
+        with self._driver.session() as session:
+            tx = session.begin_transaction()
+            result = tx.run(query)
+            results = result.data()
+            print(results)
+
+        return results
     
             
     def add_node(self, node_type, node_id, data):
