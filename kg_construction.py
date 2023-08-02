@@ -105,7 +105,7 @@ def main():
     db_connection = db.DB_Connection()
     #db_connection.clear()
     
-    directory = "events"
+    directory = "AIKoGAM/events"
     filename = "events_.txt"
     file = os.path.join(directory, filename)
     
