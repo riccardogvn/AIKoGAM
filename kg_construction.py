@@ -169,7 +169,17 @@ def main():
                                 event_id += 1
                                 db_connection.add_node("event", event_id, ev_data)
                                 db_connection.link_two_nodes("event", event_id, "artwork", artwork_id)
-                                
+    
+    #fix possible issues with multiple unwanted relationships
+    query = '''
+            MATCH (p:event)<-[r:PARTECIPATED_TO]-(a:artwork)
+            with [a,p] as ap, collect(r) as rels
+            CALL apoc.refactor.mergeRelationships(rels)
+            yield rel
+            return count(rel) as result
+            '''
+    db_connection.additionalQuery(query)
+
 if __name__ == "__main__":
     main()
     
