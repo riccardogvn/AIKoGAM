@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  5 11:54:34 2022
 
-@author: hemohamed
-"""
 import sys
 sys.path.append("..")
 from neo4j import GraphDatabase
@@ -90,11 +86,10 @@ class DB_Connection(object):
     def additionalQuery(self, query):
         with self._driver.session() as session:
             tx = session.begin_transaction()
-            result = tx.run(query)
-            results = result.data()
-            print(results)
+            tx.run(query)
+            tx.commit()
 
-        return results
+        return ('Rels merged')
     
             
     def add_node(self, node_type, node_id, data):
@@ -229,31 +224,32 @@ class DB_Connection(object):
             tx = session.begin_transaction()
             
             query = "MATCH (a:event) "
-            query += f"WHERE a.label = \"{ev_label}\" OR ("
+            query += f"WHERE a.label = \"{ev_label}\" "
+            #OR ("
             
             # Match event subject
-            query += "(a." + self.event_subject[0] + " in " + str(vals)
-            for attr in self.event_subject[1:]:
-                query += " OR a." + str(attr) + " in " + str(vals)
+            #query += "(a." + self.event_subject[0] + " in " + str(vals)
+            #for attr in self.event_subject[1:]:
+            #    query += " OR a." + str(attr) + " in " + str(vals)
             
             # Match event location    
-            query += ") AND (a." + self.event_location[0] + " in " + str(vals)   
-            for attr in self.event_location[1:]:
-                query += " OR a." + str(attr) + " in " + str(vals) 
+            #query += ") AND (a." + self.event_location[0] + " in " + str(vals)   
+            #for attr in self.event_location[1:]:
+            #    query += " OR a." + str(attr) + " in " + str(vals) 
             
             # Match event date
-            query += ") AND "
-            if type (ev_date) is list and len(ev_date) > 1:
-                query += "((a.DATE >= " + str(ev_date[0]) + " AND a.DATE =< " + str(ev_date[1]) + ") OR (a.START_DATE = " + str(ev_date[0]) + " AND a.END_DATE = " + str(ev_date[1]) + ")) "
-            elif type (ev_date) is int:
-                query += "((a.START_DATE <= " + str(ev_date) + " AND a.END_DATE >= " + str(ev_date) + ") OR a.DATE = " + str(ev_date) + ") "
-            elif type (ev_date) is str:
-                query += "a.DATE in " + str(vals)
-            else:
-                query += "a.DATE is null "
+            #query += ") AND "
+            #if type (ev_date) is list and len(ev_date) > 1:
+            #    query += "((a.DATE >= " + str(ev_date[0]) + " AND a.DATE =< " + str(ev_date[1]) + ") OR (a.START_DATE = " + str(ev_date[0]) + " AND a.END_DATE = " + str(ev_date[1]) + ")) "
+            #elif type (ev_date) is int:
+            #    query += "((a.START_DATE <= " + str(ev_date) + " AND a.END_DATE >= " + str(ev_date) + ") OR a.DATE = " + str(ev_date) + ") "
+            #elif type (ev_date) is str:
+            #    query += "a.DATE in " + str(vals)
+            #else:
+            #    query += "a.DATE is null "
                 
-            query += ") RETURN a.event_id as id"
-
+            #query += ") RETURN a.event_id as id"
+            query +=  "RETURN a.event_id as id"
             try:
                 result = tx.run(query)
                 for record in result:
@@ -307,20 +303,20 @@ class DB_Connection(object):
         propertiesLocations = ['GPE','LANGUAGE','LOC','NORP']
         propertiesOther = ['EVENT','FAC','LAW','MONEY','ORDINAL','PRODUCT','WORK_OF_ART']
         for i in propertiesDates:
-            query = "MATCH (e:event) WHERE"
+            query = "MATCH (e:event) WHERE "
             query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:date "
             query += "{name:"
             query += f" {i}"
             query += '''}) FOREACH (event in events |
                 MERGE (event)-[:HAS_'''
-            query += f'{i}]->(g) )
+            query += f"{i}]->(g) )"
                     
             with self._driver.session() as session:
                 tx = session. begin_transaction()
                 tx.run(query)
                 tx.commit()
         for i in propertiesLocations:
-            query = "MATCH (e:event) WHERE"
+            query = "MATCH (e:event) WHERE "
             query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:location "
             query += "{name:"
             query += f" {i}"
@@ -331,7 +327,7 @@ class DB_Connection(object):
                 tx.run(query)
                 tx.commit()
         for i in propertiesActors:
-            query = "MATCH (e:event) WHERE"
+            query = "MATCH (e:event) WHERE "
             query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:actor "
             query += "{name:"
             query += f" {i}"
@@ -342,7 +338,7 @@ class DB_Connection(object):
                 tx.run(query)
                 tx.commit()
         for i in propertiesOther:
-            query = "MATCH (e:event) WHERE"
+            query = "MATCH (e:event) WHERE "
             query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:other "
             query += "{name:"
             query += f" {i}"
@@ -352,7 +348,6 @@ class DB_Connection(object):
                 tx = session. begin_transaction()
                 tx.run(query)
                 tx.commit()
-                
             
         
                             
