@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  2 10:40:15 2022
-
-@author: hemohamed, Riccardo Giovanelli
-"""
 import os
 import json
 import re
@@ -170,6 +165,7 @@ def extract_store_events(ner_model, directory, json_object_level = 0, event_sepa
                                 for entity_type in ev_entites.keys():
                                     ev_data[entity_type] = ev_entites[entity_type][0]
                                     
+                                
                                 artwork_events.append(ev_data)
                             events_of_artworks.append(artwork_events)
                             
@@ -177,6 +173,7 @@ def extract_store_events(ner_model, directory, json_object_level = 0, event_sepa
                         with open('AIKoGAM/events/events.txt', 'a', encoding="utf-8") as output_f:
                             json_object["events"] = events_of_artworks
                             json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
+                            print(json_str)
                             output_f.write(json_str + "\n")
                             artwork_index += 1
                     except Exception:
@@ -287,7 +284,7 @@ if __name__ == "__main__":
     for conf in ds_config:
         artwork_index = extract_store_events_from_events(ner_model, conf['ds'], artwork_index)
         
-    print("Job done")       
+    print("Job done")        
     
 
   
