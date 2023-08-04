@@ -18,38 +18,23 @@ neo4j = {
     "encrypted": False
 }
 ```
-3. Clone this repository
-4. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
+3. Clone this repository from your command line
+```
+git clone https://github.com/riccardogvn/AIKoGAM.git
+```
+5. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
 ```
 pip install jupyter lab
-```
-5. Launch Jupyter Lab from your command line
-```
-jupyter lab
-```
-6. Open the file 
-5. 
-2. Install the dependencies listed in the 'requirements.txt'.
-```
-pip3 install -r requirements.txt
-```
-
-3. Install spaCy's Named Entity Recognition (NER) model.
-```
-python -m spacy download en_core_web_md
 ```
 
 ## Execution:
 
-1. Run the following to extract the events from the provenance texts. This module will store the events in the 'events' folder.
+1. Launch Jupyter Lab from your command line
 ```
-python event_extraction.py
+jupyter lab
 ```
+2. From Jupyter Lab open the file AIKoGAM_notebook.ipynb
 
-2. Run the following to construct the KG.
-```
-python kg_construction.py
-```
 
 ## Output:
 
