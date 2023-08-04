@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Dec 14 10:12:37 2022
-
-@authors: hemohamed, Riccardo Giovanelli
-"""
 import re
 import os
 import re
@@ -1030,6 +1025,37 @@ def remap_paa_data(paa_data):
             logging.error(f"Error occurred in remap_paa_data: {str(e)}")
 
     return final_data
+
+def hashAndClean(final_output):
+    lots = dict()
+    events = dict()
+    
+    for fin in final_output:
+        for j in fin['saleLots']:
+            j['lotHash'] = dict_hash(j)
+        fin['saleHash'] = dict_hash(fin)
+        for j in fin['saleLots']:
+            j['saleHash'] = fin['saleHash']
+        for j in fin['saleLots']:
+            lots[j['lotHash']] = j
+        events[fin['saleHash']] = fin
+    for k,v in events.items():
+        v.pop('saleLots')
+    
+    for k,v in lots.items():
+        for x,j in v.items():
+            if j == None:
+                v[x] = ""
+                print(v[x])
+            if type(j) == dict:
+                for a,b in j.items():
+                    if b == None:
+                        j[a] = ""
+                        print(j)
+                        
+    db = {'events':events,'lots':lots}
+    
+    return db
  
 if __name__ == "__main__":
     print(extract_year("between 1945 and 1972")[0])
