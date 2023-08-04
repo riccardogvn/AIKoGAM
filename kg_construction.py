@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  5 11:44:24 2022
-
-@author: hemohamed, Riccardo Giovanelli
-"""
 import os
 import json
 from src.db import db_connection as db
@@ -170,7 +165,11 @@ def main():
                                 db_connection.add_node("event", event_id, ev_data)
                                 db_connection.link_two_nodes("event", event_id, "artwork", artwork_id)
     
-    #fix possible issues with multiple unwanted relationships
+   
+    print('starting extraction of new entities from events')
+    db_connection.actorsFromEvent()
+
+    print('merging double rels')
     query = '''
             MATCH (p:event)<-[r:PARTECIPATED_TO]-(a:artwork)
             with [a,p] as ap, collect(r) as rels
@@ -179,9 +178,9 @@ def main():
             return count(rel) as result
             '''
     db_connection.additionalQuery(query)
-    db_connection.actorsFromEvent()
 
 if __name__ == "__main__":
     main()
+    
     
     
