@@ -3,6 +3,7 @@ An AI-driven Knowledge Graph of the Antiquities market: toward automatised metho
 The notebook allows artworks and their provenance data collection, the building of a Knowledge Graph derived from these data, through NLP enhanced event extraction, on Neo4j and the performing of different Network Analysis on the Graph.
 
 Part of code are partially adapted from: Hebatallah Mohamed (hebatallah.mohamed@iit.it)
+
 Author: Riccardo Giovanelli (riccardo.giovanelli@unive.it)
 
 
