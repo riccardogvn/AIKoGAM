@@ -17,6 +17,15 @@ import urllib
 from typing import Dict, Any
 from html import unescape
 import hashlib
+# Import necessary libraries
+import logging
+from datetime import datetime
+# Set up logging
+logging.basicConfig(filename='error_log.log', level=logging.ERROR,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+
 
 def remove_dots(text):
     '''
@@ -151,7 +160,7 @@ now = datetime.now()
 date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
 now = datetime.now()
 date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
-directory = rf'/logs/run' 
+directory = os.path.join("logs", "run")
 os.makedirs(directory, exist_ok=True)
 filename = f'{directory}.json'
 # Set up logging
@@ -176,6 +185,17 @@ def dict_hash(dictionary: Dict[str, Any]) -> str:
     encoded = json.dumps(dictionary, sort_keys=True).encode()
     dhash.update(encoded)
     return dhash.hexdigest()
+
+def get_event_id(ev_data):
+    
+    props = ev_data[0]
+    vals = ev_data[1]
+    ev_data_dict = {}
+    for idx, prop_name in enumerate(props):
+        ev_data_dict[prop_name] = vals[idx]
+    event_id = dict_hash(ev_data_dict)
+    return event_id
+
 
 def save_image(url, directory):
     """Download and save an image from the given URL to the specified directory."""
@@ -277,7 +297,9 @@ def process_lot(lot, storeImage):
         img_link = lot['image']['image_src']
         if storeImage:
             try:
-                localPath = save_image(img_link, rf"\\images_\chri_{str(date_and_hour)}")
+                directory = os.path.join("images", f"christies_{str(date_and_hour)}")
+                os.makedirs(directory, exist_ok=True)
+                localPath = save_image(img_link, directory)
             except Exception as e:
                 localPath = None
                 logging.error(f"Exception occurred while saving image for lot {lot['object_id']}: {str(e)}")
@@ -563,7 +585,10 @@ def collect_sales_sothebys(auctionIds, storeImage=False):
                     img_link = lot['data']['lotV2']['media']['images'][0]['renditions'][0]['url']
                 if storeImage:
                     try:
-                        localPath = save_image(img_link, rf"\\images_\sothe_{str(date_and_hour)}")
+                        directory = os.path.join("images", f"sothebys_{str(date_and_hour)}")
+                        os.makedirs(directory, exist_ok=True)
+                        localPath = save_image(img_link, directory)
+                        
                     except Exception as e:
                         localPath = None
                         logging.error(f"Exception occurred while saving image for lot {lot['object_id']}: {str(e)}")
@@ -740,7 +765,10 @@ def collectPAA(storeImage=False):
             data['image'] = image_link
             if storeImage:
                 try:
-                    data['local_image'] = saveImagePAA(image_link, rf"\\images_\paa_{str(date_and_hour)}")
+                    directory = os.path.join("images", f"paa_{str(date_and_hour)}")
+                    os.makedirs(directory, exist_ok=True)
+                    
+                    data['local_image'] = saveImagePAA(image_link, directory)
                 except:
                     pass
             else:
@@ -773,14 +801,7 @@ def collectPAA(storeImage=False):
 
     return woas_db
 
-# Import necessary libraries
-import logging
-from datetime import datetime
-from tqdm import tqdm  # tqdm provides a progress bar for loops
 
-# Set up logging
-logging.basicConfig(filename='error_log.log', level=logging.ERROR,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Function to map Sotheby's data to the final keys
 def map_sothebys_data(data):
@@ -952,7 +973,7 @@ def remap_christies_data(data):
 
     return final_data
 
-from datetime import datetime
+
 
 def remap_paa_lot(item):
     lot = {
