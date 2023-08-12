@@ -3,7 +3,7 @@ import os
 import json
 from src.db import db_connection as db
 from src.utils import utils
-
+from tqdm.notebook import tqdm
 
 def prepare_artwork_data(artwork):
     """
@@ -48,6 +48,8 @@ def prepare_event_data(event):
     """
     properties = []
     values = []
+    event_id = utils.dict_hash(event)
+    event['event_id'] = event_id
 
     # Extract event dates (using RegEx)
     label_duration = utils.extract_duration(event['label'])
@@ -82,9 +84,11 @@ def prepare_event_data(event):
     for property_name in event.keys():
         if property_name != 'DATE':
             properties.append(property_name)
-            values.append(str(event[property_name]))
+            values.append(event[property_name])
      
     proccessed_data = [properties, values]
+    
+    
     return  proccessed_data
 
 
@@ -100,12 +104,12 @@ def main():
     db_connection = db.DB_Connection()
     #db_connection.clear()
     
-    directory = "AIKoGAM/events"
-    filename = "events.txt"
+    directory = "events"
+    filename = "events.txt" #REMEMBER TO CHANGE BACK!!!
     file = os.path.join(directory, filename)
     
     
-    event_id = -1 
+     
      
     with open(file, newline='', encoding="utf8") as jsonfile:
         lines = jsonfile.readlines()
@@ -117,17 +121,10 @@ def main():
             hash_ids = []
             for hash in hashes:
                 hash_ids.append(hash['a.artwork_id'])
-            
-        
-        
-        for line in lines:
-
+        for line in tqdm(lines):
             json_line = json.loads(line)
-            
-            
-            
             for json_key in json_line.keys():
-                print(json_key)
+                
                 json_object = json_line[str(json_key)]
                 
                 if json_object['lotHash'] in hash_ids:
@@ -141,43 +138,44 @@ def main():
                             json_object['events'].append(e)
                     json_object.pop('_events')
                     
-
+            
                     artwork_data = prepare_artwork_data(json_object)
                     
                     # Create a new 'artwork' node
                     artwork_id = json_object['lotHash']
                     db_connection.add_node("artwork", artwork_id, artwork_data)
-                    
-                    
-                    
                     for event in json_object['events']:
                         ev_data = prepare_event_data(event)
+                        event_id = ev_data[1][-1]
+                        
                         
                         # Match similar 'event' nodes if exist, otherwise create a new one
-                        event_ids = db_connection.get_similar_event(ev_data)
                         
+                        event_ids = db_connection.get_similar_event(ev_data)
                         if (event_ids):
                             for existing_event in event_ids:
                                 db_connection.link_two_nodes("event", existing_event, "artwork", artwork_id)  
                         else:
-                            if (not set(ev_data[0]).isdisjoint(set(db_connection.event_subject + db_connection.event_location + db_connection.event_date))):
-                                event_id += 1
+                            if (not set(ev_data[0]).isdisjoint(set(db_connection.event_subject + db_connection.event_location + db_connection.event_date + db_connection.event_id))):                        
+                                
                                 db_connection.add_node("event", event_id, ev_data)
                                 db_connection.link_two_nodes("event", event_id, "artwork", artwork_id)
+        print('starting extraction of new entities from events')
+        db_connection.actorsFromEvent()
+    
+        print('merging double rels')
+        query = '''
+                MATCH (p:event)<-[r:PARTECIPATED_TO]-(a:artwork)
+                with [a,p] as ap, collect(r) as rels
+                CALL apoc.refactor.mergeRelationships(rels)
+                yield rel
+                return count(rel) as result
+                '''
+        db_connection.additionalQuery(query)
+
     
    
-    print('starting extraction of new entities from events')
-    db_connection.actorsFromEvent()
-
-    print('merging double rels')
-    query = '''
-            MATCH (p:event)<-[r:PARTECIPATED_TO]-(a:artwork)
-            with [a,p] as ap, collect(r) as rels
-            CALL apoc.refactor.mergeRelationships(rels)
-            yield rel
-            return count(rel) as result
-            '''
-    db_connection.additionalQuery(query)
+    
 
 if __name__ == "__main__":
     main()

@@ -33,8 +33,7 @@ pip install jupyter lab
 ```
 jupyter lab
 ```
-2. From Jupyter Lab open the file AIKoGAM_notebook.ipynb and follow the instruction in the notebook
-<img src='imgs/juplab.png' width='85%' height='85%'>
+2. From Jupyter Lab open the file AIKoGAM_notebook.ipynb
 
 
 ## Output:
