@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-
 import sys
-sys.path.append("..")
 from neo4j import GraphDatabase
 from setup import config as cfg
 
+sys.path.append("..")
 
 class DB_Connection(object):
     
@@ -25,7 +24,7 @@ class DB_Connection(object):
         self._driver = GraphDatabase.driver(uri, auth=(username, password), encrypted=encrypted) 
         self._success_status = 0
         self._error_status = -1
-            
+        self.event_id = ["event_id"]    
         self.event_subject = ["ORG", "PERSON", "WORK_OF_ART", "FAC", "EVENT", "NORP", "LANGUAGE", "PRODUCT", "LAW"]
         self.event_location = ["LOC", "GPE"]
         self.event_date = ["DATE", "START_DATE", "END_DATE"]
@@ -76,7 +75,7 @@ class DB_Connection(object):
     def check_db(self):
         with self._driver.session() as session:
             tx = session.begin_transaction()
-            query = "USE prova MATCH (n) RETURN count(n)"
+            query = "MATCH (n) RETURN count(n)"
             result = tx.run(query)
             results = result.data()
             datum = results[0]['count(n)']
@@ -132,13 +131,16 @@ class DB_Connection(object):
             for idx, property_name in enumerate(props):
                 if property_name == "DATE":
                     if type(vals[idx]) is list:
-                        query += ", " + property_name + ": " + str(vals[idx]) + ""  
+                        query += ", " + property_name + ": " + vals[idx] + ""  
                     elif type(vals[idx]) is int:
                         query += ", " + property_name + ": " + str(vals[idx]) + "" 
                     else:
                         query += ", " + property_name + ": \"" + str(vals[idx]).replace('\"', '\'') + "\""     
-                else:    
-                    query += ", " + property_name + ": \"" + str(vals[idx]).replace('\"', '\'') + "\""
+                else: 
+                    if type(vals[idx]) is list:
+                        query += ", " + property_name + ": " + str(vals[idx]) + ""
+                    else:
+                        query += ", " + property_name + ": \"" + str(vals[idx]).replace('\"', '\'') + "\""
                     
             query += "})"
             
@@ -298,17 +300,18 @@ class DB_Connection(object):
         return self._success_status
 
     def actorsFromEvent(self):
+
+       
         propertiesDates = ['DATE','END_DATE','START_DATE']
         propertiesActors = ['ORG','PERSON']
         propertiesLocations = ['GPE','LANGUAGE','LOC','NORP']
         propertiesOther = ['EVENT','FAC','LAW','MONEY','ORDINAL','PRODUCT','WORK_OF_ART']
         for i in propertiesDates:
             query = "MATCH (e:event) WHERE "
-            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:date "
-            query += "{name:"
-            query += f" {i}"
-            query += '''}) FOREACH (event in events |
-                MERGE (event)-[:HAS_'''
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events UNWIND {i} as element MERGE (g:date "
+            query +='''{name:element})
+                    FOREACH (event in events |
+                    MERGE (event)-[:HAS_'''
             query += f"{i}]->(g) )"
                     
             with self._driver.session() as session:
@@ -317,37 +320,43 @@ class DB_Connection(object):
                 tx.commit()
         for i in propertiesLocations:
             query = "MATCH (e:event) WHERE "
-            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:location "
-            query += "{name:"
-            query += f" {i}"
-            query += '''}) FOREACH (event in events |
-                MERGE (event)-[:HAS_LOCATION]->(g) )'''      
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events UNWIND {i} as element MERGE (g:location "
+            query += '''{name:element})
+                    FOREACH (event in events |
+                    MERGE (event)-[:HAS_LOCATION]->(g) )'''      
             with self._driver.session() as session:
                 tx = session. begin_transaction()
                 tx.run(query)
                 tx.commit()
         for i in propertiesActors:
             query = "MATCH (e:event) WHERE "
-            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:actor "
-            query += "{name:"
-            query += f" {i}"
-            query += '''}) FOREACH (event in events |
-                MERGE (event)<-[:PARTECIPATED_TO]-(g) )'''      
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events UNWIND {i} as element MERGE (g:actor "
+            query += '''{name:element})
+                    FOREACH (event in events |
+                    MERGE (event)<-[:PARTECIPATED_TO]-(g) )'''      
             with self._driver.session() as session:
                 tx = session. begin_transaction()
                 tx.run(query)
                 tx.commit()
         for i in propertiesOther:
             query = "MATCH (e:event) WHERE "
-            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events MERGE (g:other "
-            query += "{name:"
-            query += f" {i}"
-            query += '''}) FOREACH (event in events |
-                MERGE (event)<-[:RELATED_TO]-(g) )'''      
+            query += f"e.{i} IS NOT NULL WITH e.{i} as {i}, collect(e) AS events UNWIND {i} as element MERGE (g:other "
+            query += '''{name:element})
+                    FOREACH (event in events |
+                    MERGE (event)<-[:RELATED_TO]-(g) )'''      
             with self._driver.session() as session:
                 tx = session. begin_transaction()
                 tx.run(query)
                 tx.commit()
+
+
+    def generalQuery(self, query):
+        with self._driver.session() as session:
+            tx = session.begin_transaction()
+            tx.run(query)
+            tx.commit()
+            print(query)
+        return(query)
             
         
                             
