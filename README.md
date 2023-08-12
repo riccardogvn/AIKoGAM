@@ -36,23 +36,3 @@ jupyter lab
 2. From Jupyter Lab open the file AIKoGAM_notebook.ipynb
 
 
-## Output:
-
-The KG will consist of nodes of type "Artwork" and "Event", as illustrated below. The following Cypher query helps showing a subset of a connected part of the KG:
-
-```
-MATCH (n:event)--()
-WITH n,count(*) as rel_cnt
-WHERE rel_cnt > 1
-WITH n LIMIT 20
-CALL apoc.path.subgraphNodes(n, {minLevel:0}) YIELD node
-return node
-```
-
-"Artwork" entity example:
-
-<img src="imgs/artwork.png" width="85%" height="85%">
-
-"Event" entity example:
-
-<img src="imgs/event.png" width="85%" height="85%">
