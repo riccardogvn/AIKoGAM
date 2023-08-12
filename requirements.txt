@@ -15,3 +15,10 @@ spacy==3.6.0
 tqdm==4.65.0
 typing
 urllib3==1.26.15
+py2neo==2023.1.5
+networkx==2.6.3
+pyvis==0.1.9.0
+matplotlib==3.4.3
+numpy==1.21.4
+scipy==1.7.3
+python-igraph==0.9.7
