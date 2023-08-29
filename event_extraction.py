@@ -113,7 +113,7 @@ def extract_store_events(ner_model, file, artwork_index = 0):
         ARTWORK INDEX.
 
     """
-    with open('datasets/exceptions.json','r') as j:
+    with open('datasets/db.json','r') as j:
         annos = json.load(j)
     annosk = list(annos.keys())
     annosv = list(annos.values())
@@ -289,6 +289,9 @@ if __name__ == "__main__":
     
         
     print("Job done")        
+    
+
+  
     
 
   
