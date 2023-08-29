@@ -20,3 +20,4 @@ python-igraph==0.9.7
 ipywidgets
 jupyter
 unidecode
+fuzzywuzzy
