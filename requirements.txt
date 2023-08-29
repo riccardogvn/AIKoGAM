@@ -19,3 +19,4 @@ scipy==1.7.3
 python-igraph==0.9.7
 ipywidgets
 jupyter
+unidecode
