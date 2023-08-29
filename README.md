@@ -13,12 +13,12 @@ Author: Riccardo Giovanelli (riccardo.giovanelli@unive.it)
 ```
 git clone https://github.com/riccardogvn/AIKoGAM.git
 ```
-2.  Install Neo4J and adjust the following configurations in the 'config.py' under the 'setup' folder.
+2.  Install Neo4J and adjust the following configurations in the 'config.py' under the 'setup' folder, with your password
 ```
 neo4j = {
     "uri":"bolt://localhost:7687",
     "username": "neo4j",
-    "password": "admininstrator",
+    "password": "*******",
     "encrypted": False
 }
 ```
