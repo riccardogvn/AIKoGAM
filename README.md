@@ -14,9 +14,9 @@ Author: Riccardo Giovanelli (riccardo.giovanelli@unive.it)
 git clone https://github.com/riccardogvn/AIKoGAM.git
 ```
 
-2. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
+2. Install requirements from your command line (we suggest to do so after creating a new virtual environment)
 ```
-pip install jupyter lab
+pip install -r requirements.txt
 ```
 
 ## Execution:
