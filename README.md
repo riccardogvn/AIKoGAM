@@ -13,16 +13,8 @@ Author: Riccardo Giovanelli (riccardo.giovanelli@unive.it)
 ```
 git clone https://github.com/riccardogvn/AIKoGAM.git
 ```
-2.  Install Neo4J and adjust the following configurations in the 'config.py' under the 'setup' folder, with your password
-```
-neo4j = {
-    "uri":"bolt://localhost:7687",
-    "username": "neo4j",
-    "password": "*******",
-    "encrypted": False
-}
-```
-4. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
+
+2. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
 ```
 pip install jupyter lab
 ```
