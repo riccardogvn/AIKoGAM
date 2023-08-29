@@ -21,3 +21,4 @@ ipywidgets
 jupyter
 unidecode
 fuzzywuzzy
+community
