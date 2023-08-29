@@ -9,7 +9,10 @@ Author: Riccardo Giovanelli (riccardo.giovanelli@unive.it)
 
 ## Installation:
 
-1. Clone this repository
+1.  Clone this repository from your command line
+```
+git clone https://github.com/riccardogvn/AIKoGAM.git
+```
 2.  Install Neo4J and adjust the following configurations in the 'config.py' under the 'setup' folder.
 ```
 neo4j = {
@@ -19,11 +22,7 @@ neo4j = {
     "encrypted": False
 }
 ```
-3. Clone this repository from your command line
-```
-git clone https://github.com/riccardogvn/AIKoGAM.git
-```
-5. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
+4. Instal Jupyter Lab from your command line (we suggest to do so after creating a new virtual environment)
 ```
 pip install jupyter lab
 ```
