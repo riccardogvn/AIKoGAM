@@ -22,3 +22,4 @@ jupyter
 unidecode
 fuzzywuzzy
 community
+pandas
