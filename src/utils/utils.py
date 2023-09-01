@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+import traceback
 import os
 import re
 import spacy
@@ -342,24 +343,30 @@ def scrape_lots(event, storeImage):
 
 
 def collect_sales(start_year, end_year, log_file, storeImage=False):
-    
-    antiquities = []
+
+
     errors = []
     if os.path.isfile('ch_done.json'):
         with open('ch_done.json','r',encoding='utf-8') as f:
             event_done = json.load(f)
     else:
         event_done = []
-    
-   
-  
-    
+
+    if os.path.isfile('christies_raw.json'):
+        with open('christies_raw.json','r',encoding='utf_8') as ch:
+            antiquities = json.load(ch)
+    else:
+        antiquities = []
+
+
+
+
 
     if start_year < 1998:
         start_year = 1998
 
     for year in tqdm(range(start_year, end_year), desc='Processing Years'):
-        
+
         for month in tqdm(range(1, 13), desc=f'Year {year}'):
             url = f'https://www.christies.com/api/discoverywebsite/auctioncalendar/auctionresults?language=en&month={month}&year={year}'
             try:
@@ -370,24 +377,24 @@ def collect_sales(start_year, end_year, log_file, storeImage=False):
                     jsy = json.loads(resp.text)
                     jsyev = jsy['events']
                     for event in tqdm(jsyev, desc='Processing Events'):
-                        
+
                         if 'category_10' in event['filter_ids'] or 'antiquities' in event['title_txt'].lower():
                             if event in event_done:
                                 pass
-                            else:                            
+                            else:
                                 event_data, lots_data = scrape_lots(event, storeImage)
                                 event_data['saleLots'] = lots_data
                                 event_data['auction'] = "Christie's"
                                 event_data['reference'] = f"{event_data['auction']} {format_date(event_data['start_date'])}"
-        
+
                                 antiquities.append(event_data)
                                 event_done.append(event)
                                 with open('ch_done.json','w') as ed:
                                     json.dump(event_done, ed)
-                                
+
                                 with open('christies_raw.json', 'w') as file:
                                     json.dump(antiquities, file)
-                                    
+
                     print(f'Finished getting data from {url}, now moving to {str(month + 1)}')
                     print(event['title_txt'])
                 else:
@@ -404,11 +411,11 @@ def collect_sales(start_year, end_year, log_file, storeImage=False):
         json.dump(antiquities, file)
     with open('ch_done.json','w') as ed:
         json.dump(event_done, ed)
-    
+
 
     print(f"Data scraped successfully. Log file: {log_file}")
 
-    return antiquities, event_done
+    return antiquities
 
 def format_date(input_date: str) -> str:
     """Convert date from 'YYYY-MM-DDTHH:MMZ' to 'DD Month YYYY' format."""
@@ -422,238 +429,275 @@ def format_date(input_date: str) -> str:
     except ValueError:
         return "Invalid date format."
 
+
 def collect_sales_sothebys(auctionIds, storeImage=False):
     sothebys = []
     not_working = []
-    if os.path.isfile('sh_done.json'):
-        with open('sh_done.json','r', encoding='utf-8') as f:
-            event_done = json.load(f)
+
+    # Load the file containing already processed auction IDs
+    done_file = 'sothebys_done.json'
+    if os.path.isfile(done_file):
+        with open(done_file, 'r', encoding='utf-8') as f:
+            auction_ids_done = json.load(f)
     else:
-        event_done = []
+        auction_ids_done = []
+    if os.path.isfile('sothebys_raw.json'):
+        with open('sothebys_raw.json','r',encoding='utf-8') as sot:
+            sothebys = json.load(sot)
+    else:
+        sothebys = []
+
+
     url = "https://clientapi.prod.sothelabs.com/graphql"
     head = {'content-type': 'application/json'}
     data = dict()
-    query = '''query
-                Auction($auctionId: String!) {
-                    auction(id: $auctionId) {
-                    auctionId
-                dates
-                {
-                    published
-                closed
-                }
-                title
-                locationV2
-                {
-                    displayLocation
-                {
-                    name
-                }
-                }
-                saleResult
-                {
-                    totalFinalPrice
-                }
-                sapSaleNumber
-                slug
-                {
-                    name
-                year
-                }
-                lotCards(filter: ALL) {
-                    lotId
-                }
-                }
-                }
-                            '''
-    query2 = '''query LotV2($lotId: String!){ lotV2(lotId: $lotId) { 
-                                    ... on LotV2 {
-                                      departmentNames
-                                      lotId
-                                      lotNumber {
-                                        ... on VisibleLotNumber {
-                                          lotNumber
-                                        }
-                                      }
-                                      slug
-                                      title
-                                      subtitle
-                                      designationLine
-                                      objects {
-                                        creationDate {
-                                          from
-                                          to
-                                        }
-                                        dimensionMetadata {
-                                          description
-                                          id
-                                          key
-                                          unit
-                                          value
-                                        }
-                                        exhibition
-                                        literature
-                                        provenance
-                                        metadata {
-                                          description
-                                          id
-                                          key
-                                          value {
-                                            ... on ObjectMetadataStringValue {
-                                              stringValue
-                                            }
-                                            ... on ObjectMetadataStringValues {
-                                              stringValues
-                                            }
-                                            ... on ObjectMetadataBooleanValue {
-                                              boolValue
-                                            }
-                                            ... on ObjectMetadataIntegerValue {
-                                              integerValue
-                                            }
-                                            ... on ObjectMetadataFloatValue {
-                                              floatValue
-                                            }
-                                          }
-                                        }
-                                        objectTypeName
-                                        objectId
-                                        id
-                                        creators {
-                                          creatorId
-                                          displayName
-                                          id
-                                          role
-                                        }
-                                      }
-                                      estimateV2 {
-                                        ... on LowHighEstimateV2 {
-                                          highEstimate {
-                                            amount
-                                            currency
-                                          }
-                                          lowEstimate {
-                                            amount
-                                            currency
-                                          }
-                                        }
-                                      }
-                                      withdrawnState {
-                                        state
-                                      }
-                                      isSaved
-                                      media {
-                                        images {
-                                          renditions {
-                                            url
-                                          }
-                                          title
-                                        }
-                                      }
-                                      lotTags
-                                      condition {
-                                        ... on ConditionPublished {
-                                          report
-                                        }
-                                      }
-                                      bidState {
-                                        sold {
-                                          ... on ResultVisible {
-                                            premiums {
-                                              finalPriceV2 {
-                                                amount
-                                                currency
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                      provenance
-                                      catalogueNote
-                                      description
-                                      literature
-                                      id
-                                      auction {
-                                        auctionId
-                                      }
-                                    }
-                                  }}
-                                    '''
-    
-    for auction in tqdm(auctionIds):  # Wrap the outer loop with tqdm
-        if auction in event_done:
-            pass
-        else:
-            variables = {'auctionId': auction}
-            data['query'] = query
-            data['variables'] = variables
-            try:
-                r = requests.post(url, data=json.dumps(data), headers=head, timeout=3)
-                feed = r.content
-                feed = feed.decode('utf8')
-                feed = json.loads(feed)['data']
-                sothebys.append(feed)
-                feed['auction']['saleLots'] = []
+    success_threshold = 0.8  # Set the threshold to 80%
 
-                for lot in tqdm(feed['auction']['lotCards']):  # Wrap the inner loop with tqdm
-                    lotId = lot['lotId']
-                    data = dict()
-                    variables = {'lotId': lot['lotId']}
-                    data['query'] = query2
-                    data['variables'] = variables
+    for auction in tqdm(auctionIds):
+        # Check if the auction ID is in the list of already processed IDs
+        if auction in auction_ids_done:
+            continue
+
+        query = '''query
+        Auction($auctionId: String!) {
+            auction(id: $auctionId) {
+            auctionId
+        dates
+        {
+            published
+        closed
+        }
+        title
+        locationV2
+        {
+            displayLocation
+        {
+            name
+        }
+        }
+        saleResult
+        {
+            totalFinalPrice
+        }
+        sapSaleNumber
+        slug
+        {
+            name
+        year
+        }
+        lotCards(filter: ALL) {
+            lotId
+        }
+        }
+        }
+                    '''
+
+        variables = {'auctionId': auction}
+        data['query'] = query
+        data['variables'] = variables
+
+        try:
+            r = requests.post(url, data=json.dumps(data), headers=head, timeout=3)
+            feed = r.content
+            feed = feed.decode('utf8')
+            feed = json.loads(feed)['data']
+            auction_data = feed['auction']
+
+            auction_data['saleLots'] = []
+            all_lots_successful = True
+
+            exception_count = 0  # Initialize the exception count
+            total_lots = len(auction_data['lotCards'])
+            successful_lots_count = 0  # Initialize the count of successful lots
+
+            for lot in tqdm(auction_data['lotCards']):  # Wrap the inner loop with tqdm
+                lotId = lot['lotId']
+                data = dict()
+                query = '''query LotV2($lotId: String!){ lotV2(lotId: $lotId) { 
+                        ... on LotV2 {
+                          departmentNames
+                          lotId
+                          lotNumber {
+                            ... on VisibleLotNumber {
+                              lotNumber
+                            }
+                          }
+                          slug
+                          title
+                          subtitle
+                          designationLine
+                          objects {
+                            creationDate {
+                              from
+                              to
+                            }
+                            dimensionMetadata {
+                              description
+                              id
+                              key
+                              unit
+                              value
+                            }
+                            exhibition
+                            literature
+                            provenance
+                            metadata {
+                              description
+                              id
+                              key
+                              value {
+                                ... on ObjectMetadataStringValue {
+                                  stringValue
+                                }
+                                ... on ObjectMetadataStringValues {
+                                  stringValues
+                                }
+                                ... on ObjectMetadataBooleanValue {
+                                  boolValue
+                                }
+                                ... on ObjectMetadataIntegerValue {
+                                  integerValue
+                                }
+                                ... on ObjectMetadataFloatValue {
+                                  floatValue
+                                }
+                              }
+                            }
+                            objectTypeName
+                            objectId
+                            id
+                            creators {
+                              creatorId
+                              displayName
+                              id
+                              role
+                            }
+                          }
+                          estimateV2 {
+                            ... on LowHighEstimateV2 {
+                              highEstimate {
+                                amount
+                                currency
+                              }
+                              lowEstimate {
+                                amount
+                                currency
+                              }
+                            }
+                          }
+                          withdrawnState {
+                            state
+                          }
+                          isSaved
+                          media {
+                            images {
+                              renditions {
+                                url
+                              }
+                              title
+                            }
+                          }
+                          lotTags
+                          condition {
+                            ... on ConditionPublished {
+                              report
+                            }
+                          }
+                          bidState {
+                            sold {
+                              ... on ResultVisible {
+                                premiums {
+                                  finalPriceV2 {
+                                    amount
+                                    currency
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          provenance
+                          catalogueNote
+                          description
+                          literature
+                          id
+                          auction {
+                            auctionId
+                          }
+                        }
+                      }}
+                        '''
+                variables = {'lotId': lot['lotId']}
+                data['query'] = query
+                data['variables'] = variables
+
+                try:
+                    r = requests.post(url, data=json.dumps(data), headers=head, timeout=3)
+                    lot_data = json.loads(r.content)
                     try:
-                        r = requests.post(url, data=json.dumps(data), headers=head, timeout=3)
-                        feed['auction']['saleLots'].append(json.loads(r.content))
-                        for lot in feed['auction']['saleLots']:
-                            img_link = lot['data']['lotV2']['media']['images'][0]['renditions'][0]['url']
+                        img_link = lot_data['data']['lotV2']['media']['images'][0]['renditions'][0]['url']
+
                         if storeImage:
                             try:
                                 directory = os.path.join("images", f"sothebys_{str(date_and_hour)}")
                                 os.makedirs(directory, exist_ok=True)
                                 localPath = save_image(img_link, directory)
-                                
                             except Exception as e:
                                 localPath = None
-                                logging.error(f"Exception occurred while saving image for lot {lot['object_id']}: {str(e)}")
-                            lot['data']['lotV2']['media']['images'][0]['renditions'][0]['localPath'] = localPath
+                                logging.error(f"Exception occurred while saving image for lot {lotId}: {str(e)}")
+
+                            lot_data['data']['lotV2']['media']['images'][0]['renditions'][0]['localPath'] = localPath
                         else:
-                            lot['data']['lotV2']['media']['images'][0]['renditions'][0]['localPath'] = None
-                    except:
-                        print('error in lot ' + lot['lotId'] + ':' + str(r.status_code))
-                        not_working.append(lot['lotId'])
-                        auction['auction']['saleLots'].append(lot['lotId'])
-                        pass
-        
-                feed['auction'].pop('lotCards')
-                x = feed['auction']
+                            lot_data['data']['lotV2']['media']['images'][0]['renditions'][0]['localPath'] = None
+                    except Exception as e:
+                        print(f'Error in img_link of lot {lotId}: {str(e)}')
+
+                    auction_data['saleLots'].append(lot_data)
+                    successful_lots_count += 1  # Increment the count for successful lots
+
+                except Exception as e:
+                    print(f'Error in lot {lotId}: {str(e)}')
+                    not_working.append(lotId)
+                    all_lots_successful = False
+
+            # Calculate the success rate for this auction
+            success_rate = successful_lots_count / total_lots
+
+            if success_rate >= success_threshold:
+                # Store the auction data as before
+                auction_data.pop('lotCards')
                 x2 = {}
-                x2['saleTitle']=x['title']
-                x2['saleId'] = x['auctionId']
-                slug = x['slug']
+                x2['saleTitle'] = auction_data['title']
+                x2['saleId'] = auction_data['auctionId']
+                slug = auction_data['slug']
                 saleUrl = f'www.sothebys.com/en/buy/auction/{slug["year"]}/{slug["name"]}'
                 x2['saleUrl'] = saleUrl
-                x2['saleSubtitle'] = x['sapSaleNumber']
-                saleStart = x['dates']['published']
-                saleEnd = x['dates']['closed']
+                x2['saleSubtitle'] = auction_data['sapSaleNumber']
+                saleStart = auction_data['dates']['published']
+                saleEnd = auction_data['dates']['closed']
                 x2['saleStart'] = saleStart
                 x2['saleEnd'] = saleEnd
-                saleLocation = x['locationV2']['displayLocation']['name']
-                x2['saleLocation'] = saleLocation    
+                saleLocation = auction_data['locationV2']['displayLocation']['name']
+                x2['saleLocation'] = saleLocation
                 x2['saleRef'] = f"Sotheby's {saleLocation} {format_date(saleStart)}"
                 x2['auction'] = "Sotheby's"
-                x2['saleLots'] = x['saleLots']
+                x2['saleLots'] = auction_data['saleLots']
                 sothebys.append(x2)
-                event_done.append(auction)
-                with open('sothebys_raw.json','w') as file:
-                    json.dump(sothebys,file)
-                with open('sh_done.json','w') as ed:
-                    json.dump(event_done,ed)
-            except:
-                print('error')
-                pass
-            
+
+                # Mark the auction ID as done
+                auction_ids_done.append(auction)
+                with open(done_file, 'w') as done_file_writer:
+                    json.dump(auction_ids_done, done_file_writer)
+                with open('sothebys_raw.json', 'w') as file:
+                    json.dump(sothebys, file)
+
+        except Exception as e:
+            print(f'Error in auction {auction}: {str(e)}')
+
+    with open('sothebys_raw.json', 'w') as file:
+        json.dump(sothebys, file)
 
     return sothebys
+
 
 def saveImagePAA(url, directory):
     id_name = url.rsplit('uploads/')[1].replace('/', '_')
