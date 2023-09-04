@@ -341,22 +341,28 @@ def scrape_lots(event, storeImage):
 
     return event_data, lots_data
 
+def openJson(path):
+    if os.path.isfile(path):
+        with open(path,'r',encoding='utf-8') as f:
+            file = json.load(f)
+    else:
+        file = []
+
+    return file
+
+def saveJson(file,path):
+    with open(path,'w') as f:
+        json.dump(file,f)
 
 def collect_sales(start_year, end_year, log_file, storeImage=False):
 
 
-    errors = []
-    if os.path.isfile('ch_done.json'):
-        with open('ch_done.json','r',encoding='utf-8') as f:
-            event_done = json.load(f)
-    else:
-        event_done = []
 
-    if os.path.isfile('christies_raw.json'):
-        with open('christies_raw.json','r',encoding='utf_8') as ch:
-            antiquities = json.load(ch)
-    else:
-        antiquities = []
+    years_complete = openJson('years_complete.json')
+    event_done = openJson('ch_done.json')
+    antiquities = openJson('christies_raw.json')
+    errors = []
+
 
 
 
@@ -382,6 +388,7 @@ def collect_sales(start_year, end_year, log_file, storeImage=False):
                             if event in event_done:
                                 pass
                             else:
+                                print(f"Moving to {event['title_txt']}")
                                 event_data, lots_data = scrape_lots(event, storeImage)
                                 event_data['saleLots'] = lots_data
                                 event_data['auction'] = "Christie's"
@@ -389,14 +396,15 @@ def collect_sales(start_year, end_year, log_file, storeImage=False):
 
                                 antiquities.append(event_data)
                                 event_done.append(event)
-                                with open('ch_done.json','w') as ed:
-                                    json.dump(event_done, ed)
+                                saveJson(event_done,'ch_done.json')
+                                saveJson(antiquities,'christies_raw.json')
 
-                                with open('christies_raw.json', 'w') as file:
-                                    json.dump(antiquities, file)
+
+
+                                print(f"done with {event['title_txt']}")
 
                     print(f'Finished getting data from {url}, now moving to {str(month + 1)}')
-                    print(event['title_txt'])
+
                 else:
                     errors.append(url)
 
@@ -407,10 +415,8 @@ def collect_sales(start_year, end_year, log_file, storeImage=False):
                 logging.error(f"Exception occurred while fetching data from {url}: {str(e)}")
                 time.sleep(random.uniform(1, 5))
 
-    with open('christies_raw.json', 'w') as file:
-        json.dump(antiquities, file)
-    with open('ch_done.json','w') as ed:
-        json.dump(event_done, ed)
+    saveJson(event_done, 'ch_done.json')
+    saveJson(antiquities, 'christies_raw.json')
 
 
     print(f"Data scraped successfully. Log file: {log_file}")
@@ -436,16 +442,9 @@ def collect_sales_sothebys(auctionIds, storeImage=False):
 
     # Load the file containing already processed auction IDs
     done_file = 'sothebys_done.json'
-    if os.path.isfile(done_file):
-        with open(done_file, 'r', encoding='utf-8') as f:
-            auction_ids_done = json.load(f)
-    else:
-        auction_ids_done = []
-    if os.path.isfile('sothebys_raw.json'):
-        with open('sothebys_raw.json','r',encoding='utf-8') as sot:
-            sothebys = json.load(sot)
-    else:
-        sothebys = []
+    auction_ids_done = openJson(done_file)
+    sothebys = openJson('sothebys_raw.json')
+
 
 
     url = "https://clientapi.prod.sothelabs.com/graphql"
@@ -685,16 +684,14 @@ def collect_sales_sothebys(auctionIds, storeImage=False):
 
                 # Mark the auction ID as done
                 auction_ids_done.append(auction)
-                with open(done_file, 'w') as done_file_writer:
-                    json.dump(auction_ids_done, done_file_writer)
-                with open('sothebys_raw.json', 'w') as file:
-                    json.dump(sothebys, file)
+                saveJson(auction_ids_done,done_file)
+                saveJson(sothebys,'sothebys_raw.json')
+
 
         except Exception as e:
             print(f'Error in auction {auction}: {str(e)}')
 
-    with open('sothebys_raw.json', 'w') as file:
-        json.dump(sothebys, file)
+    saveJson(sothebys,'sothebys_raw.json')
 
     return sothebys
 
@@ -720,6 +717,8 @@ def saveImagePAA(url, directory):
 def collectPAA(storeImage=False):
     # Create a list to store the data
     data = []
+    event_done = openJson('paa_done.json')
+    woas_db = openJson('paa_raw.json')
     # Get the list of works of art
     url = "https://phoenixancientart.com/works-of-art/"
     response = requests.get(url, headers=get_random_headers())
@@ -732,138 +731,143 @@ def collectPAA(storeImage=False):
         woa = i.find('a')['href']
         woas.append(woa)
 
-    woas_db = []
+
 
     debug = []
 
     for woa in tqdm(woas, desc='Processing Lots'):  # Wrap the loop with tqdm
-        resp = requests.get(woa, headers=get_random_headers())
-        if resp:
-            soup = BeautifulSoup(resp.content, 'html.parser')
-            data = {}
-    
-            # Extract the title
-            title = soup.find('h1').text.strip()
-            data['title'] = title
-    
-            # Extract the subtitle
-            subtitle = soup.find('p', class_='subtitle').text.strip()
-            data['subtitle'] = subtitle
-    
-            # Extract material, dimensions, reference, and price
-            details_container = soup.find('section', class_='content-module woa-details')
-            materials_container = details_container.find('div', class_='materials')
-            material = materials_container.find_all('p')
-            if len(material) >= 2:
-                materials = material[1:]
-                materials_data = {}
-                for mat in materials:
-                    materials_data[material[0].text.strip().lower() + str(materials.index(mat))] = mat.text.strip()
-    
-                data['material'] = materials_data
-            dimensions_container = details_container.find('div', class_='dimensions')
-            dimensions = dimensions_container.find_all('p')
-            if len(dimensions) >= 2:
-                dimensions = dimensions[1:]
-            dimensions_data = {}
-    
-            for dimension in dimensions:
-                dimension_text = dimension.text.split('(')[0].strip()
-                if ':' in dimension_text:
-                    key, value = dimension_text.split(':',1)
-                    value = value.split('(')[0].strip()  # Exclude contents inside parentheses
-                    dimensions_data[key.strip()] = value.strip()
-            data['dimensions'] = dimensions_data
-            reference_container = details_container.find('div', class_='reference')
-            reference = reference_container.find_all('p')
-            if len(reference) >= 2:
-                data['reference'] = reference[1].text.strip()
-            price_container = details_container.find('div', class_='price')
-            price = price_container.find_all('p')
-            if len(price) >= 2:
-                price_value = price[1].text.strip()
-                if price_value.lower() == 'POR'.lower() or price_value.lower() == 'SOLD'.lower():
-                    data['price'] = {'price': price_value}
-                elif '$' in price_value:
-                    currency = 'USD'
-                    value = price_value.split('$')[1].replace(",","")
-                    data['price'] = {'price': value, 'currency': currency}
-                else:
-                    currency = price_value.split()[0]
-                    value = price_value.split()[1].replace("'", "")
-                    data['price'] = {'price': value, 'currency': currency}
-    
-    
-    
-    
-            # Extract overview
-            overview = soup.find('section', class_='content-module woa-accordion').find('div', class_='accordion-item')
-            overview_content = overview.find('div', class_='accordion-content').find_all('p')
-            overview_data = {}
-            for i, content in enumerate(overview_content):
-                key = f'overview_{i}'
-                value = content.text.strip()
-                overview_data[key] = value
-            data['overview'] = overview_data
-            keywords = ['Provenance', 'Overview', 'Bibliography', 'Condition', 'Published', 'Exhibited']
-            accordion_items = soup.find('section', class_='content-module woa-accordion').find_all('div', class_='accordion-item')
-            for item in accordion_items:
-                section_title = item.find('h2').get_text(strip=True)
-                if section_title in keywords:
-                    section_container = item.find('div', class_='accordion-content')
-                    if '<br/>' in str(section_container):
-                        section_container = BeautifulSoup(str(section_container).replace('<br/>','</p><p>'))
-                    sections = section_container.find_all('p')
-    
-                    section_data = {}
-                    for section in sections:
-                        if len(section.text.strip()) > 2:
-                            section_data[section_title.lower() + '_' + str(sections.index(section))] = section.text.strip()
-    
-                    data[section_title.lower()] = section_data
-                    keywords.remove(section_title)
-            for unused_key in keywords:
-                data[unused_key.lower()] = None
-    
-            # Extract image link
-            image_meta = soup.find('meta', property='og:image')
-            image_link = image_meta['content']
-            data['image'] = image_link
-            if storeImage:
-                try:
-                    directory = os.path.join("images", f"paa_{str(date_and_hour)}")
-                    os.makedirs(directory, exist_ok=True)
-                    
-                    data['local_image'] = saveImagePAA(image_link, directory)
-                except:
-                    pass
-            else:
-                data['local_image'] = None
-    
-            # Extract content URL
-            content_url_meta = soup.find('meta', property='og:url')
-            content_url = content_url_meta['content']
-            data['url'] = content_url
-    
-            # Extract modified time
-            try:
-                modified_time_meta = soup.find('meta', property='article:modified_time')
-                modified_time = modified_time_meta['content']
-                data['page_modified'] = modified_time
-            except:
-                data['pafe_modified'] = None
-    
-            woas_db.append(data)
-            with open('PAA.json', 'w') as file:
-                json.dump(woas_db, file)
-        else:
-            debug.append(woa)
+        if woa in event_done:
             pass
-        '''except Exception:
-           debug.append(woa)
+        else:
+            resp = requests.get(woa, headers=get_random_headers())
+            if resp:
+                soup = BeautifulSoup(resp.content, 'html.parser')
+                data = {}
+
+                # Extract the title
+                title = soup.find('h1').text.strip()
+                data['title'] = title
+
+                # Extract the subtitle
+                subtitle = soup.find('p', class_='subtitle').text.strip()
+                data['subtitle'] = subtitle
+
+                # Extract material, dimensions, reference, and price
+                details_container = soup.find('section', class_='content-module woa-details')
+                materials_container = details_container.find('div', class_='materials')
+                material = materials_container.find_all('p')
+                if len(material) >= 2:
+                    materials = material[1:]
+                    materials_data = {}
+                    for mat in materials:
+                        materials_data[material[0].text.strip().lower() + str(materials.index(mat))] = mat.text.strip()
+
+                    data['material'] = materials_data
+                dimensions_container = details_container.find('div', class_='dimensions')
+                dimensions = dimensions_container.find_all('p')
+                if len(dimensions) >= 2:
+                    dimensions = dimensions[1:]
+                dimensions_data = {}
+
+                for dimension in dimensions:
+                    dimension_text = dimension.text.split('(')[0].strip()
+                    if ':' in dimension_text:
+                        key, value = dimension_text.split(':',1)
+                        value = value.split('(')[0].strip()  # Exclude contents inside parentheses
+                        dimensions_data[key.strip()] = value.strip()
+                data['dimensions'] = dimensions_data
+                reference_container = details_container.find('div', class_='reference')
+                reference = reference_container.find_all('p')
+                if len(reference) >= 2:
+                    data['reference'] = reference[1].text.strip()
+                price_container = details_container.find('div', class_='price')
+                price = price_container.find_all('p')
+                if len(price) >= 2:
+                    price_value = price[1].text.strip()
+                    if price_value.lower() == 'POR'.lower() or price_value.lower() == 'SOLD'.lower():
+                        data['price'] = {'price': price_value}
+                    elif '$' in price_value:
+                        currency = 'USD'
+                        value = price_value.split('$')[1].replace(",","")
+                        data['price'] = {'price': value, 'currency': currency}
+                    else:
+                        currency = price_value.split()[0]
+                        value = price_value.split()[1].replace("'", "")
+                        data['price'] = {'price': value, 'currency': currency}
+
+
+
+
+                # Extract overview
+                overview = soup.find('section', class_='content-module woa-accordion').find('div', class_='accordion-item')
+                overview_content = overview.find('div', class_='accordion-content').find_all('p')
+                overview_data = {}
+                for i, content in enumerate(overview_content):
+                    key = f'overview_{i}'
+                    value = content.text.strip()
+                    overview_data[key] = value
+                data['overview'] = overview_data
+                keywords = ['Provenance', 'Overview', 'Bibliography', 'Condition', 'Published', 'Exhibited']
+                accordion_items = soup.find('section', class_='content-module woa-accordion').find_all('div', class_='accordion-item')
+                for item in accordion_items:
+                    section_title = item.find('h2').get_text(strip=True)
+                    if section_title in keywords:
+                        section_container = item.find('div', class_='accordion-content')
+                        if '<br/>' in str(section_container):
+                            section_container = BeautifulSoup(str(section_container).replace('<br/>','</p><p>'))
+                        sections = section_container.find_all('p')
+
+                        section_data = {}
+                        for section in sections:
+                            if len(section.text.strip()) > 2:
+                                section_data[section_title.lower() + '_' + str(sections.index(section))] = section.text.strip()
+
+                        data[section_title.lower()] = section_data
+                        keywords.remove(section_title)
+                for unused_key in keywords:
+                    data[unused_key.lower()] = None
+
+                # Extract image link
+                image_meta = soup.find('meta', property='og:image')
+                image_link = image_meta['content']
+                data['image'] = image_link
+                if storeImage:
+                    try:
+                        directory = os.path.join("images", f"paa_{str(date_and_hour)}")
+                        os.makedirs(directory, exist_ok=True)
+
+                        data['local_image'] = saveImagePAA(image_link, directory)
+                    except:
+                        pass
+                else:
+                    data['local_image'] = None
+
+                # Extract content URL
+                content_url_meta = soup.find('meta', property='og:url')
+                content_url = content_url_meta['content']
+                data['url'] = content_url
+
+                # Extract modified time
+                try:
+                    modified_time_meta = soup.find('meta', property='article:modified_time')
+                    modified_time = modified_time_meta['content']
+                    data['page_modified'] = modified_time
+                except:
+                    data['pafe_modified'] = None
+
+                woas_db.append(data)
+                event_done.append(woa)
+                saveJson(event_done,'paa_done.json')
+                saveJson(event_done,'paa_raw.json')
+                with open('paa_raw.json', 'w') as file:
+                    json.dump(woas_db, file)
+            else:
+                debug.append(woa)
+                pass
+            '''except Exception:
+               debug.append(woa)
     '''
-        with open('paa_raw.json', 'w') as file:
-            json.dump(woas_db, file)
+
 
     return woas_db
 
