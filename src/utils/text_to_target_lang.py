@@ -56,7 +56,9 @@ def text_to_target_lang(text, original_lang = None, target_lang, lang_detector_m
         # If the detected language is the same as the target language or not the same as the original_lang,
         # no translation needed
         translated_text = text
-    else:    
+        print(f"{detected_lang}, not translating")
+    else:
+        print(f"{detected_lang}, translating")
         def translate(detected_lang, translation_model, target_lang):
             if translation_model is None:
                 # Default translation model
