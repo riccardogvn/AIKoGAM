@@ -25,3 +25,5 @@ community
 pandas
 jupyterlab
 plotly
+lxml==4.9.3
+transformers==4.10.0

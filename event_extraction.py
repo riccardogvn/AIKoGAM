@@ -5,6 +5,7 @@ import re
 import spacy
 from src.utils import utils
 from tqdm.notebook import tqdm
+from src.utils import
 
 def extract_events_dot(text):
     """
@@ -87,6 +88,8 @@ def clean_provenance(prov):
     
     prov = prov.replace('_', '')
     prov = prov.replace('<em>', '')
+
+
     
     return prov
     
