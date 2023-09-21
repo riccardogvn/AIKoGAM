@@ -6,7 +6,9 @@ import spacy
 from src.utils import utils
 from tqdm.notebook import tqdm
 from src.utils.transl import text_to_target_lang
-
+import spacy
+from spacy.cli.download import download
+from transformers import pipeline  # Add this import statement
 def extract_events_dot(text):
     """
      Extract events from a paragraph based on full stops.
@@ -89,10 +91,126 @@ def clean_provenance(prov):
     prov = prov.replace('_', '')
     prov = prov.replace('<em>', '')
 
-    prov, other = text_to_target_lang(prov, target_lang='en',original_lang='zh')
+
     
     return prov
-    
+
+
+
+
+
+spacy_models = {
+    'ca': 'ca_core_news_sm',  # Catalan
+    'da': 'da_core_news_sm',  # Danish
+    'de': 'de_core_news_sm',  # German
+    'el': 'el_core_news_sm',  # Greek
+    'en': 'en_core_web_md',  # English
+    'es': 'es_core_news_sm',  # Spanish
+    'fi': 'fi_core_news_sm',  # Finnish
+    'fr': 'fr_core_news_sm',  # French
+    'hr': 'hr_core_news_sm',  # Croatian
+    'it': 'it_core_news_sm',  # Italian
+    'ja': 'ja_core_news_sm',  # Japanese
+    'ko': 'ko_core_news_sm',  # Korean
+    'lt': 'lt_core_news_sm',  # Lithuanian
+    'mk': 'mk_core_news_sm',  # Macedonian
+    'nb': 'nb_core_news_sm',  # Norwegian Bokmål
+    'nl': 'nl_core_news_sm',  # Dutch
+    'pl': 'pl_core_news_sm',  # Polish
+    'pt': 'pt_core_news_sm',  # Portuguese
+    'ro': 'ro_core_news_sm',  # Romanian
+    'sl': 'sl_core_news_sm',  # Slovenian
+    'sv': 'sv_core_news_sm',  # Swedish
+    'ru': 'ru_core_news_sm',  # Russian
+    'uk': 'uk_core_news_sm',  # Ukrainian
+    'xx_ent_wiki': 'xx_ent_wiki_sm',  # Multi-language Entity Recognition
+    'xx_sent_ud': 'xx_sent_ud_sm',  # Multi-language Sentence Segmentation
+    'zh': 'zh_core_web_sm',  # Chinese
+}
+
+def detect_language(provenance_text, language_cache):
+    # Check if the input is a valid string
+    if not isinstance(provenance_text, (str, bytes)):
+        raise ValueError("provenance_text must be a string or bytes-like object")
+
+    # Check if the language is cached based on similarity
+    matched_key = None
+    for key in language_cache.keys():
+        if fuzz.ratio(provenance_text, key) >= similarity_threshold:
+            matched_key = key
+            print('matched')
+            break
+
+    if matched_key is not None:
+        detected_lang, spacy_model = language_cache[matched_key]
+    else:
+        # Language detection using the specified model
+        lang_detector = pipeline("text-classification", model="ERCDiDip/langdetect")
+        detected_lang = lang_detector(provenance_text)
+        print(detected_lang)
+
+        # Check if multiple languages were detected
+        detected_lang = lang_detector(provenance_text)[0]['label']
+        primary_lang_score = lang_detector(provenance_text)[0]['score']  # Get the score of the primary language
+
+        if len(detected_lang) > 1:
+            other_lang = detected_lang[1:]  # Get other detected languages
+        else:
+            other_lang = None
+
+        # Determine the Spacy model to use based on language detection score
+        if primary_lang_score < 0.7:
+            detected_lang = 'en'
+
+        elif detected_lang in spacy_models:
+            detected_lang = detected_lang
+
+        else:
+            detected_lang = 'en'
+
+        spacy_model = spacy_models[detected_lang]
+
+        # Cache the detected language and Spacy model based on similarity
+        language_cache[provenance_text] = (detected_lang, spacy_model)
+
+    return detected_lang, spacy_model, language_cache
+from tqdm import tqdm
+def add_lang(file, language_cache):
+    with open(file, 'r', encoding='utf-8') as j:
+        annos = json.load(j)
+        annosk = list(annos.keys())
+        annosv = list(annos.values())
+        data = annos
+        for key, value in tqdm(data['lots'].items()):
+            json_object = value
+            prov = value['lotProvenance']
+            events_of_artworks = []
+            if prov:
+                try:
+                    new_p = dict()
+                    for k, v in prov.items():
+                        if v is None:
+                            pass
+                        else:
+                            cleaned_prov = clean_provenance(v)
+                            print(cleaned_prov)
+                            detected_lang, _, language_cache = detect_language(cleaned_prov, language_cache)
+                            prov_with_lang = (cleaned_prov, detected_lang)
+                            new_p[k] = prov_with_lang
+                    json_object['lotProvenance'] = new_p
+                    print(new_p)
+                except Exception as e:
+                    json_object['lotProvenance'] = prov
+                    print(f"Error processing provenance: {str(e)}")
+                    pass
+            with open('datasets/db_lang.json', 'w', encoding='utf-8') as db:
+                json.dump(data, db)
+
+    return data
+
+
+
+
 def extract_store_events(ner_model, file, artwork_index = 0):
     """
     Extract events from artwork provenances. Store the events in JSON format.
