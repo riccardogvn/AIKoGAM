@@ -63,7 +63,7 @@ def main():
     global batch_size  # You can adjust this based on your requirements
 
     batch_num = 0  # Initialize batch number
-
+    
     # Initialize a multiprocessing Pool
     with Pool(processes=num_processes) as pool:
         lot_keys = list(dataset['lots'].keys())  # Get the keys of the 'lots' dictionary

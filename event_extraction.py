@@ -6,24 +6,30 @@ import spacy
 from src.utils import utils
 from tqdm.notebook import tqdm
 from src.utils.transl import text_to_target_lang
-import spacy
 from spacy.cli.download import download
 from transformers import pipeline  # Add this import statement
+from memory_profiler import profile
+import gc  # Import the garbage collection module
+from fuzzywuzzy import fuzz
+from setup.config import SPACY_MODELS, similarity_threshold
+
+# Define a similarity threshold for language caching
+similarity_threshold = 90
+
 def extract_events_dot(text):
     """
-     Extract events from a paragraph based on full stops.
+    Extract events from a paragraph based on full stops.
     
-     Parameters
-     ----------
-     text : STR
-         A PARAGRAPH.
+    Parameters
+    ----------
+    text : str
+        A paragraph.
     
-     Returns
-     -------
-     events : LIST
-         LIST OF EVENTS FOUND.
-    
-     """
+    Returns
+    -------
+    events : list
+        List of events found.
+    """
     events = re.findall('[a-zA-Z\u00C0-\u017F\d,;\s\(\)\'\"\’\&\\-:\/]+.', text)
     events = [s.strip() for s in events]
     events = [s.strip(".") for s in events]
@@ -31,18 +37,17 @@ def extract_events_dot(text):
 
 def extract_events_html(text):
     """
-    Extract events from a paragraph based on html tags.
+    Extract events from a paragraph based on HTML tags.
 
     Parameters
     ----------
-    text : STR
-        A PARAGRAPH.
+    text : str
+        A paragraph.
 
     Returns
     -------
-    events : LIST
-        LIST OF EVENTS FOUND.
-
+    events : list
+        List of events found.
     """
     events = []
     lines = text.split("<br />")
@@ -57,21 +62,20 @@ def extract_events_html(text):
             
     events = [s.strip() for s in events]    
     return events
-             
+
 def clean_provenance(prov):
     """
-    Proprocess provenance text.
+    Preprocess provenance text.
 
     Parameters
     ----------
-    prov : STR
-        PROPVENANCE TEXT.
+    prov : str
+        Provenance text.
 
     Returns
     -------
-    prov : STR
-        PREPROCESSED PROPVENANCE TEXT.
-
+    prov : str
+        Preprocessed provenance text.
     """ 
     # Remove the parts of the provenance that are inside brackets (to facilitate extracting events)
     prov = re.sub("\s[\[\(].*?[\)\]]", "", prov)
@@ -91,45 +95,29 @@ def clean_provenance(prov):
     prov = prov.replace('_', '')
     
     prov = prov.replace('<em>', '')
-    
-
-    
+        
     return prov
 
-
-
-
-
-spacy_models = {
-    'ca': 'ca_core_news_sm',  # Catalan
-    'da': 'da_core_news_sm',  # Danish
-    'de': 'de_core_news_sm',  # German
-    'el': 'el_core_news_sm',  # Greek
-    'en': 'en_core_web_md',  # English
-    'es': 'es_core_news_sm',  # Spanish
-    'fi': 'fi_core_news_sm',  # Finnish
-    'fr': 'fr_core_news_sm',  # French
-    'hr': 'hr_core_news_sm',  # Croatian
-    'it': 'it_core_news_sm',  # Italian
-    'ja': 'ja_core_news_sm',  # Japanese
-    'ko': 'ko_core_news_sm',  # Korean
-    'lt': 'lt_core_news_sm',  # Lithuanian
-    'mk': 'mk_core_news_sm',  # Macedonian
-    'nb': 'nb_core_news_sm',  # Norwegian Bokmål
-    'nl': 'nl_core_news_sm',  # Dutch
-    'pl': 'pl_core_news_sm',  # Polish
-    'pt': 'pt_core_news_sm',  # Portuguese
-    'ro': 'ro_core_news_sm',  # Romanian
-    'sl': 'sl_core_news_sm',  # Slovenian
-    'sv': 'sv_core_news_sm',  # Swedish
-    'ru': 'ru_core_news_sm',  # Russian
-    'uk': 'uk_core_news_sm',  # Ukrainian
-    'xx_ent_wiki': 'xx_ent_wiki_sm',  # Multi-language Entity Recognition
-    'xx_sent_ud': 'xx_sent_ud_sm',  # Multi-language Sentence Segmentation
-    'zh': 'zh_core_web_sm',  # Chinese
-}
-
 def detect_language(provenance_text, language_cache):
+    """
+    Detect the language of provenance text.
+
+    Parameters
+    ----------
+    provenance_text : str
+        Provenance text.
+    language_cache : dict
+        A cache for storing detected languages.
+
+    Returns
+    -------
+    detected_lang : str
+        Detected language code (e.g., 'en' for English).
+    spacy_model : str
+        Spacy model name corresponding to the detected language.
+    language_cache : dict
+        Updated language cache.
+    """
     # Check if the input is a valid string
     if not isinstance(provenance_text, (str, bytes)):
         raise ValueError("provenance_text must be a string or bytes-like object")
@@ -148,7 +136,6 @@ def detect_language(provenance_text, language_cache):
         # Language detection using the specified model
         lang_detector = pipeline("text-classification", model="ERCDiDip/langdetect")
         detected_lang = lang_detector(provenance_text)
-        print(detected_lang)
 
         # Check if multiple languages were detected
         detected_lang = lang_detector(provenance_text)[0]['label']
@@ -175,8 +162,23 @@ def detect_language(provenance_text, language_cache):
         language_cache[provenance_text] = (detected_lang, spacy_model)
 
     return detected_lang, spacy_model, language_cache
-from tqdm import tqdm
+
 def add_lang(file, language_cache):
+    """
+    Add language information to the provenance text in a JSON file.
+
+    Parameters
+    ----------
+    file : str
+        Path to the input JSON file.
+    language_cache : dict
+        A cache for storing detected languages.
+
+    Returns
+    -------
+    data : dict
+        Updated JSON data with language information.
+    """
     with open(file, 'r', encoding='utf-8') as j:
         annos = json.load(j)
         annosk = list(annos.keys())
@@ -209,23 +211,15 @@ def add_lang(file, language_cache):
 
     return data
 
-
-
-
-import json
-import spacy
-from tqdm.notebook import tqdm
-
-from src.utils import utils
-
+#@profile
 def batch_extract_store_events(
     artworks,
-    batch_size=100,  # Define your desired batch size
-    annosk=None,  # Pass annosk as an argument
-    annosv=None, # Pass annosv as an argument
+    batch_size=100,
+    annosk=None,
+    annosv=None,
     event_output_file='events/events.txt',
     no_event_output_file='events/noevents.txt',
-    artwork_index=0 
+    artwork_index=0
 ):
     """
     Extract events from a list of artwork provenances and store the events in JSON format.
@@ -247,14 +241,10 @@ def batch_extract_store_events(
 
     Returns
     -------
-    None
+    artwork_index : int
+        Updated artwork index.
     """
-    import json
-    import spacy
-    from tqdm.notebook import tqdm
-    from src.utils import utils
-    f
-
+    final_output = []
     old_model = 'en_core_web_md'
     spacy_model = old_model
     nlp = spacy.load('en_core_web_md')
@@ -359,11 +349,10 @@ def batch_extract_store_events(
                             event.update(output_dict)
 
                             events_of_artworks.append(artwork_events)
-                            with open(event_output_file, 'a', encoding="utf-8") as output_f:
-                                json_object["events"] = events_of_artworks
-                                json_object_with_index = {str(artwork_index): json_object}                                
-                                output_f.write(json.dumps(json_object_with_index, ensure_ascii=False) + "\n")
-                                artwork_index += 1
+                            json_object["events"] = events_of_artworks
+                            json_object_with_index = {str(artwork_index): json_object}   
+                            final_output.append(json_object_with_index)
+                            artwork_index += 1
 
                             # Increment the iteration counter
                             iteration_counter += 1
@@ -371,38 +360,38 @@ def batch_extract_store_events(
                             # Check if the counter is a multiple of 100
                             if iteration_counter % 100 == 0:
                                 print(f"Last events added for iteration {iteration_counter}: {artwork_events}")
+                                
                 else:
-                    with open(event_output_file, 'a', encoding="utf-8") as output_f:
-                        json_object["events"] = ""
-                        json_object_with_index = {str(artwork_index): json_object}                             
-                        output_f.write(json.dumps(json_object_with_index, ensure_ascii=False) + "\n")
-                        artwork_index +=1
-                    with open(no_event_output_file,'a',encoding='utf-8') as output_f:
-                        json_object['eventy'] = ""
-                        json_object_with_index = {str(artwork_index): json_object}           
-                        output_f.write(json.dumps(json_object_with_index, ensure_Ascii=False) + '\n')
-                        artwork_index += 1
+                    json_object["events"] = ""
+                    json_object_with_index = {str(artwork_index): json_object}                             
+                    final_output.append(json_object_with_index)
+                    artwork_index +=1
+                    
 
             except Exception as e:
                 # Handle specific exceptions and log them for better debugging
                 print(f"Error processing artwork: {str(e)}")
 
+            gc.collect()  # Perform garbage collection to release memory inside the loop
+
+    with open(event_output_file,'a',encoding='utf-8') as output_f:
+        for json_object in final_output:
+            output_f.write(json.dumps(json_object,ensure_ascii=False) + '\n')
+
     return artwork_index
 
-
-
-if __name__ == "__main__":
-    
-    # Named Entity Recognition (NER) model
-    ner_model = spacy.load("en_core_web_md")
-    
-    file = 'datasets/db.json'
-
-    artwork_index = 0
-    artwork_index = extract_store_events(ner_model, file, artwork_index)
-    
-        
-    print("Job done")        
+if __name__ == "__main__":  
+    with open('datasets/final_db.json','r',encoding='utf-8') as f:
+        file = json.load(f)
+    annos=file
+    annosk = list(annos.keys())
+    annosv = list(annos.values())
+    artworks = list(file['lots'].values())
+     
+    artwork_index = batch_extract_store_events(artworks, batch_size=50, annosk=annosk, annosv=annosv)
+            
+    print("Job done")
+     
     
 
   

@@ -9,6 +9,9 @@ batch_size = 50
 # Set the number of processes (workers) to use for parallel processing
 num_processes = 4
 
+# Define a similarity threshold for language caching
+similarity_threshold = 90
+
 # Set the Neo4j database settings
 neo4j = {
     "uri": "bolt://localhost:7687",  # URI for Neo4j database
