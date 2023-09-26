@@ -127,7 +127,9 @@ def year_from_century(text):
     return year_range
 
 
-def extract_named_entities(ner_model, text):
+def extract_named_entities(text, spacy_model, old_model, nlp):
+    from setup.config import SPACY_MAPPINGS, ENTITIES_MAPPING
+
     """
     Extract named entities from text.
 
@@ -144,30 +146,45 @@ def extract_named_entities(ner_model, text):
         LIST OF NAMED ENTITIES.
 
     """
-    nlp = ner_model(text) 
+    if spacy_model != old_model:
+        try:
+            nlp = spacy.load(spacy_model)
+            
+        except OSError:
+            
+            try:
+                download(spacy_model)  # Download the Spacy model
+                nlp = spacy.load(spacy_model)
+            except:
+                nlp = spacy.load('en_core_news_md')
+    else:
+        spacy_model = spacy_model
+        
+        
+    
     
     entities = {}
-    for ent in nlp.ents:
-        if ent.label_ not in entities:  
-            entities[ent.label_] = [ent.text]
+    for ent in nlp(text).ents:
+        # First, check SPACY_MAPPINGS for entity label mapping
+        for k, v in SPACY_MAPPINGS.items():
+            if ent.label_ in v:
+                ent.label_ = k
+                break
+    
+        # Then, check ENTITIES_MAPPING for custom entity tag
+        for tag, entity_list in ENTITIES_MAPPING.items():
+            if ent.text in entity_list:
+                ent.label_ = tag
+                break
+    
+        label = ent.label_
+        if label not in entities:
+            entities[label] = [ent.text]
         else:
-            entities[ent.label_].append(ent.text)
-    return entities
-
-
-
-# Load the spaCy model
-nlp = spacy.load("en_core_web_sm")
-now = datetime.now()
-date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
-now = datetime.now()
-date_and_hour = datetime.now().strftime("%d%m%Y_%H%M")
-directory = os.path.join("logs", "run")
-os.makedirs(directory, exist_ok=True)
-filename = f'{directory}.json'
-# Set up logging
-log_file = f'{directory}_{datetime.now().strftime("%d%m%Y_%H%M")}_log.txt'
-logging.basicConfig(filename=f'{directory}_{datetime.now().strftime("%d%m%Y_%H%M_%S")}_log.txt', level=logging.ERROR)
+            entities[label].append(ent.text)
+    old_model = spacy_model
+    
+    return entities, old_model, nlp
 
 def format_date(input_date):
     try:
@@ -1148,6 +1165,58 @@ def hashAndClean(final_output):
     db = {'events':events,'lots':lots}
     
     return db
+
+def cleanSubdictionaries(partial_output):
+    import json
+    import re
+    from tqdm.notebook import tqdm
+    from event_extraction import clean_provenance
+    
+    # Define a regular expression pattern to match non-alphanumeric characters (excluding foreign language characters)
+    non_alphanumeric_pattern = re.compile(r'^[^\w]+$')
+    to_clean = ['lotProvenance', 'lotDetails', 'lotExhibited', 'lotEssay']
+    
+    # Iterate through the 'saleLots' list
+    for object in partial_output:
+        for item in object['saleLots']:
+            for element in to_clean:
+                lot_provenance = item.get(element, {})
+                
+                if lot_provenance is None:
+                    continue  # Skip None values
+                
+                # Create a set to keep track of unique 'text' values within the same 'lotProvenance'
+                unique_texts = set()
+        
+                # Create a list of keys to remove based on 'text' values
+                keys_to_remove = []
+        
+                # Create a dictionary to store the renumbered 'lotProvenance' subdictionaries
+                new_lot_provenance = {}
+        
+                count = 1  # Counter for renumbering subdictionaries
+        
+                for key, value in lot_provenance.items():
+                    text = clean_provenance(str(value))  # Ensure value is a string
+                    if not text or non_alphanumeric_pattern.match(text) or text in unique_texts or text == 'None' or text == "":
+                        keys_to_remove.append(key)
+                    else:
+                        # Renumber the subdictionary keys as 'provenance_1', 'provenance_2', ...
+                        base_key = element.replace('lot', '').lower()
+                        new_key = f'{base_key}_{count}'
+                        new_lot_provenance[new_key] = clean_provenance(text)
+                        count += 1
+                        unique_texts.add(text)
+        
+                # Remove the subdictionaries with duplicate, empty, or non-alphanumeric 'text' values
+                for key in keys_to_remove:
+                    lot_provenance.pop(key, None)
+        
+                # Replace the 'lotProvenance' dictionary with the renumbered and cleaned version
+                item[element] = new_lot_provenance
+
+    return partial_output
+
  
 if __name__ == "__main__":
     print(extract_year("between 1945 and 1972")[0])

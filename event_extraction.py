@@ -89,8 +89,9 @@ def clean_provenance(prov):
     prov = prov.replace('.,', ',')
     
     prov = prov.replace('_', '')
+    
     prov = prov.replace('<em>', '')
-
+    
 
     
     return prov
@@ -211,189 +212,181 @@ def add_lang(file, language_cache):
 
 
 
-def extract_store_events(ner_model, file, artwork_index = 0):
+import json
+import spacy
+from tqdm.notebook import tqdm
+
+from src.utils import utils
+
+def batch_extract_store_events(
+    artworks,
+    batch_size=100,  # Define your desired batch size
+    annosk=None,  # Pass annosk as an argument
+    annosv=None, # Pass annosv as an argument
+    event_output_file='events/events.txt',
+    no_event_output_file='events/noevents.txt',
+    artwork_index=0 
+):
     """
-    Extract events from artwork provenances. Store the events in JSON format.
+    Extract events from a list of artwork provenances and store the events in JSON format.
 
     Parameters
     ----------
-    ner_model : LANGUAGE
-        NAMED ENTITY REGOGNITION MODEL.
-    directory : STR
-        DATASET OF PROVENANCES.
-    json_object_level : INT, optional
-        JSON OBJECT LEVEL TO CONSIDER FOR EXTRACTING ARTWORK DATA. The default is 0.
-    event_separator : STR, optional
-        THE MECHANISM OF EXTRACTING EVENTS. The default is "html".
-    artwork_index : INT, optional
-        ARTWORK INDEX. The default is 0.
+    artworks : list of dict
+        List of artwork JSON objects.
+    batch_size : int, optional
+        Batch size for processing. The default is 100.
+    event_output_file : str, optional
+        Path to the event output file. The default is 'events/events.txt'.
+    no_event_output_file : str, optional
+        Path to the file for artworks with no events. The default is 'events/noevents.txt'.
+    annosk : list, optional
+        List of keys for mapping. Pass this argument if required.
+    annosv : list, optional
+        List of values for mapping. Pass this argument if required.
 
     Returns
     -------
-    artwork_index : INT
-        ARTWORK INDEX.
-
+    None
     """
-    with open('datasets/db.json','r') as j:
-        annos = json.load(j)
-    annosk = list(annos.keys())
-    annosv = list(annos.values())
-    
-    with open(file, 'r') as input_f:
+    import json
+    import spacy
+    from tqdm.notebook import tqdm
+    from src.utils import utils
+    f
 
-    # Returns json object as a dictionary
-        data = json.load(input_f)
-          
-        # Iterating through the json list
-        # Iterating through the json list
-        for k,v in tqdm(data['lots'].items()):
-           
-            json_object = v
-            prov = v['lotProvenance'] 
+    old_model = 'en_core_web_md'
+    spacy_model = old_model
+    nlp = spacy.load('en_core_web_md')
+    iteration_counter = 0  # Initialize a counter to keep track of iterations
+
+    # Process artworks in batches
+    for batch_start in tqdm(range(0, len(artworks), batch_size)):
+        batch_end = min(batch_start + batch_size, len(artworks))
+        batch_artworks = artworks[batch_start:batch_end]
+
+        for json_object in tqdm(batch_artworks):
+            prov = json_object.get('lotProvenance')
             events_of_artworks = []
-        
-            # Consider only artworks with provenance  
-            if (prov):                  
-                try:    
-                    # Preprocessing
-                    for k,v in prov.items():
-                        if v is None:                    
+
+            try:
+                if prov:
+                    for k, v in prov.items():
+                        if v is None:
+                            print('v none')
                             pass
-                        else:
-                            prov = clean_provenance(v)
-            
-                    # Remove dots from names, etc.
-                            entities = utils.extract_named_entities(ner_model, prov)
+                        elif k == 'provenance_0':
+                            pass
+                        elif isinstance(v, dict):
+                            prov_text = clean_provenance(v['text'])
+                            spacy_model = v['spacy_model']
+                            entities, old_model, nlp = utils.extract_named_entities(prov_text, spacy_model, old_model, nlp)
                             for i, entity_ls in enumerate(entities.values()):
-                                if (list(entities.keys())[i] != 'DATE'): 
+                                if (list(entities.keys())[i] != 'DATE'):
                                     for e in entity_ls:
-                                        prov = prov.replace(e, utils.remove_dots(e))
-            
-                            
-                            
-                            events = extract_events_dot(prov)
-            
-                            # Extract named entities from the events
+                                        prov_text = prov_text.replace(e, utils.remove_dots(e))
+                            events = extract_events_dot(prov_text)
                             artwork_events = []
-                            
+
                             for event in events:
                                 ev_data = {}
-                                ev_data['label'] = event
-                                
-                                ev_entites = utils.extract_named_entities(ner_model, event)
-                                
+                                ev_data['label'] = event.replace('|', '').strip()
+
+                                ev_entites, old_model, nlp = utils.extract_named_entities(event, spacy_model, old_model, nlp)
+
                                 for entity_type in ev_entites.keys():
                                     ev_data[entity_type] = ev_entites[entity_type]
-                                    
-                                
+
                                 artwork_events.append(ev_data)
-                                print('oLDone\n',artwork_events)
-                                from collections import Counter
-                                new_artwork_events = []
-                                from collections import Counter
 
-                                for event in artwork_events:
-                                    new_elems = []
-                                    label_value = None  # Initialize a variable to store the 'label' value
-                                    for k, v in event.items():
-                                        if k == 'label':  # Check if the key is 'label'
-                                            label_value = v
-                                            new_elems.append((k, v))
-                                        if type(v) is str:
-                                            if v in annosk:
-                                                idx = annosk.index(v)
-                                                new_elems.append((annosv[idx], v))
-                                                print('is str in annosk', new_elems)
-                                            elif 'collection' in v.lower():
-                                                if k == 'label':
-                                                    if len(event) == 1:
-                                                        new_elems.append(('ORG', v))
-                                                        print('collection in v lower with label k', new_elems)
-                                                        new_elems.append(('label', v))
-                                                        print('readding label', new_elems)
-                                                else:
+                            for event in artwork_events:
+                                new_elems = []
+                                label_value = None
+
+                                for k, v in event.items():
+                                    if k == 'label':
+                                        label_value = v
+                                        new_elems.append((k, v))
+                                    elif isinstance(v, str):
+                                        if v in annosk:
+                                            idx = annosk.index(v)
+                                            new_elems.append((annosv[idx], v))
+                                        elif 'collection' in v.lower():
+                                            if k == 'label':
+                                                if len(event) == 1:
                                                     new_elems.append(('ORG', v))
-                                                    print('not label k', new_elems)
+                                                    new_elems.append(('label', v))
                                             else:
-                                                new_elems.append((k, v))
-                                                print('else', new_elems)
-                                        elif type(v) is list:
-                                            key = k
-                                            for element in v:
-                                                if element in annosk:
-                                                    idx = annosk.index(element)
-                                                    new_elems.append((annosv[idx], element))
-                                                    print('list', new_elems)
-                                                elif 'collection' in element.lower():
-                                                    if key == 'label':
-                                                        if len(event) == 1:
-                                                            new_elems.append(('ORG', element))
-                                                            print('listwithcollectionlabel', new_elems)
-                                                            new_elems.append(('label', element))
-                                                            print('readdinglabel', new_elems)
-                                                    else:
-                                                        new_elems.append(('ORG', element))
-                                                        print('notlist', new_elems)
-                                                else:
-                                                    new_elems.append((k, element))
-                                                    print(new_elems)
-                                    event['new_elem'] = new_elems
-                                    output_dict = {}
-                                    
-                                    for elem in event['new_elem']:
-                                        key, value = elem
-                                        
-                                        if key in output_dict:
-                                            if isinstance(output_dict[key], list):
-                                                output_dict[key].append(value)
-                                            else:
-                                                output_dict[key] = [output_dict[key], value]
+                                                new_elems.append(('ORG', v))
                                         else:
-                                            output_dict[key] = value
-                                        
-                                    output_dict['label'] = label_value  # Restore the 'label' key-value pair
-                                    event.clear()
-                                    event.update(output_dict)
-                                
-                                print('newone\n', artwork_events)
-                                
-                                    
-                                
-                        events_of_artworks.append(artwork_events)
-                        
-                
-                    with open('events/events.txt', 'a', encoding="utf-8") as output_f:
-                                json_object["events"] = events_of_artworks
-                                json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
-                                output_f.write(json_str + "\n")
-                                artwork_index += 1
-                except:
-                    with open('events/events.txt', 'a', encoding="utf-8") as output_f:
-                        json_object["events"] = ""
-                        json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
-                        output_f.write(json_str + "\n")
-                        artwork_index += 1
-                    with open('events/noevents.txt', 'a', encoding="utf-8") as output_f:
-                        json_object["eventy"] = ""
-                        json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
-                        output_f.write(json_str + "\n")
-                        artwork_index += 1
-            else:
-                    with open('events/events.txt', 'a', encoding="utf-8") as output_f:
-                        json_object["events"] = ""
-                        json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
-                        output_f.write(json_str + "\n")
-                        artwork_index += 1
-                    with open('events/noevents.txt', 'a', encoding="utf-8") as output_f:
-                        json_object["events"] = ""
-                        json_str = json.dumps({str(artwork_index):json_object}, ensure_ascii = False)
-                        output_f.write(json_str + "\n")
-                        artwork_index += 1  
-            
-                                          
-                
+                                            new_elems.append((k, v))
+                                    elif isinstance(v, list):
+                                        key = k
+                                        for element in v:
+                                            if element in annosk:
+                                                idx = annosk.index(element)
+                                                new_elem = (annosv[idx], element)
+                                                if new_elem not in new_elems:
+                                                    new_elems.append(new_elem)
+                                            elif any('collection' in str(e).lower() for e in element):
+                                                if key == 'label':
+                                                    if len(event) == 1:
+                                                        new_elem = ('ORG', element)
+                                                        if new_elem not in new_elems:
+                                                            new_elems.append(new_elem)
+                                                            new_elems.append(('label', element))
+                                                else:
+                                                    new_elem = ('ORG', element)
+                                                    if new_elem not in new_elems:
+                                                        new_elems.append(new_elem)
+                                            else:
+                                                new_elems.append((k, element))
 
-         
+                            event['new_elem'] = new_elems
+                            output_dict = {}
+                            for elem in event['new_elem']:
+                                key, value = elem
+                                if key in output_dict:
+                                    if isinstance(output_dict[key], list):
+                                        output_dict[key].append(value)
+                                    else:
+                                        output_dict[key] = [output_dict[key], value]
+                                else:
+                                    output_dict[key] = value
+
+                            output_dict['label'] = label_value
+                            event.clear()
+                            event.update(output_dict)
+
+                            events_of_artworks.append(artwork_events)
+                            with open(event_output_file, 'a', encoding="utf-8") as output_f:
+                                json_object["events"] = events_of_artworks
+                                json_object_with_index = {str(artwork_index): json_object}                                
+                                output_f.write(json.dumps(json_object_with_index, ensure_ascii=False) + "\n")
+                                artwork_index += 1
+
+                            # Increment the iteration counter
+                            iteration_counter += 1
+
+                            # Check if the counter is a multiple of 100
+                            if iteration_counter % 100 == 0:
+                                print(f"Last events added for iteration {iteration_counter}: {artwork_events}")
+                else:
+                    with open(event_output_file, 'a', encoding="utf-8") as output_f:
+                        json_object["events"] = ""
+                        json_object_with_index = {str(artwork_index): json_object}                             
+                        output_f.write(json.dumps(json_object_with_index, ensure_ascii=False) + "\n")
+                        artwork_index +=1
+                    with open(no_event_output_file,'a',encoding='utf-8') as output_f:
+                        json_object['eventy'] = ""
+                        json_object_with_index = {str(artwork_index): json_object}           
+                        output_f.write(json.dumps(json_object_with_index, ensure_Ascii=False) + '\n')
+                        artwork_index += 1
+
+            except Exception as e:
+                # Handle specific exceptions and log them for better debugging
+                print(f"Error processing artwork: {str(e)}")
+
     return artwork_index
 
 
