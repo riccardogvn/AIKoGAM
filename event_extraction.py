@@ -30,9 +30,10 @@ def extract_events_dot(text):
     events : list
         List of events found.
     """
-    events = re.findall('[a-zA-Z\u00C0-\u017F\d,;\s\(\)\'\"\’\&\\-:\/]+.', text)
+    events = re.findall('[a-zA-Z\u00C0-\u017F\d,;\s\(\)\'\"\’\&\\-:/|]+', text)
     events = [s.strip() for s in events]
-    events = [s.strip(".") for s in events]
+    events = [s.strip(".") for s in events]    
+    events = [s.rstrip('|') for s in events]
     return events
 
 def extract_events_html(text):
@@ -95,6 +96,7 @@ def clean_provenance(prov):
     prov = prov.replace('_', '')
     
     prov = prov.replace('<em>', '')
+    
         
     return prov
 
@@ -163,6 +165,39 @@ def detect_language(provenance_text, language_cache):
 
     return detected_lang, spacy_model, language_cache
 
+def duplicatesCheck(datafile):
+    # Read the content of the file
+    with open(datafile, "r", encoding="utf-8") as file:
+        data = file.readlines()
+    
+    # Create a dictionary to store unique entries based on lotHash
+    unique_entries = {}
+    
+    # Process each line in the file
+    for line in data:
+        entry = json.loads(line)
+        lot_hash = entry.get(list(entry.keys())[0], {}).get("lotHash")
+    
+        # Check if the lotHash is not already present
+        if lot_hash not in unique_entries:
+            unique_entries[lot_hash] = entry
+    
+    # Write the unique entries back to the file with new index keys (0, 1, 2, 3, 4, ...)
+    with open(datafile, "w", encoding="utf-8") as file:
+        for index, entry in enumerate(unique_entries.values()):
+            # Write the extracted dictionary with the new index as the key
+            file.write(json.dumps({str(index): entry[next(iter(entry))]}, ensure_ascii=False) + "\n")
+    
+    # Print the length of data and unique_entries
+    print("Length of data:", len(data))
+    print("Length of unique_entries:", len(unique_entries))
+    print("Duplicates removed:", len(data)-len(unique_entries))
+
+    with open(datafile, newline='', encoding="utf8") as jsonfile:
+        lines = jsonfile.readlines()
+        
+    return jsonfile 
+
 def add_lang(file, language_cache):
     """
     Add language information to the provenance text in a JSON file.
@@ -212,12 +247,13 @@ def add_lang(file, language_cache):
     return data
 
 #@profile
+#@profile
 def batch_extract_store_events(
     artworks,
     batch_size=100,
     annosk=None,
     annosv=None,
-    event_output_file='events/events.txt',
+    event_output_file='events/events___.txt',
     no_event_output_file='events/noevents.txt',
     artwork_index=0
 ):
@@ -257,6 +293,7 @@ def batch_extract_store_events(
 
         for json_object in tqdm(batch_artworks):
             prov = json_object.get('lotProvenance')
+            print('Prov',prov)
             events_of_artworks = []
 
             try:
@@ -269,33 +306,54 @@ def batch_extract_store_events(
                             pass
                         elif isinstance(v, dict):
                             prov_text = clean_provenance(v['text'])
+                            print('prov_text',prov_text)
                             spacy_model = v['spacy_model']
                             entities, old_model, nlp = utils.extract_named_entities(prov_text, spacy_model, old_model, nlp)
+                            print('entities', entities)
+                            
+                            # Preserve the original provenance text for events
+                            events_prov_text = prov_text
+                            
+                            # Create a copy of the provenance text for extracting named entities
+                            named_entities_prov_text = prov_text
+                            
+                            # Extract named entities and replace them in the copy
                             for i, entity_ls in enumerate(entities.values()):
                                 if (list(entities.keys())[i] != 'DATE'):
                                     for e in entity_ls:
-                                        prov_text = prov_text.replace(e, utils.remove_dots(e))
-                            events = extract_events_dot(prov_text)
+                                        named_entities_prov_text = named_entities_prov_text.replace(e, utils.remove_dots(e))
+                                        print('named_entities_prov_text.replace', named_entities_prov_text)
+                            
+                            # Use the copy with replaced named entities for extracting events
+                            events = extract_events_dot(named_entities_prov_text)
+                            
                             artwork_events = []
-
+                            print('events', events)
+                            
                             for event in events:
                                 ev_data = {}
                                 ev_data['label'] = event.replace('|', '').strip()
-
-                                ev_entites, old_model, nlp = utils.extract_named_entities(event, spacy_model, old_model, nlp)
-
-                                for entity_type in ev_entites.keys():
-                                    ev_data[entity_type] = ev_entites[entity_type]
-
+                                print('ev_data', ev_data)
+                            
+                                # Pass the already extracted entities to the inner loop
+                                for entity_type in entities.keys():
+                                    ev_data[entity_type] = entities[entity_type]
+                            
                                 artwork_events.append(ev_data)
+                                print('artwork_events', artwork_events)
+
 
                             for event in artwork_events:
                                 new_elems = []
                                 label_value = None
 
                                 for k, v in event.items():
+                                    print(f'Processing key: {k}, value: {v}')
+
                                     if k == 'label':
                                         label_value = v
+                                        print(f'Label value: {label_value}')
+
                                         new_elems.append((k, v))
                                     elif isinstance(v, str):
                                         if v in annosk:
@@ -308,6 +366,7 @@ def batch_extract_store_events(
                                                     new_elems.append(('label', v))
                                             else:
                                                 new_elems.append(('ORG', v))
+                                            print(f'String value: {v}')
                                         else:
                                             new_elems.append((k, v))
                                     elif isinstance(v, list):
@@ -329,44 +388,36 @@ def batch_extract_store_events(
                                                     new_elem = ('ORG', element)
                                                     if new_elem not in new_elems:
                                                         new_elems.append(new_elem)
-                                            else:
-                                                new_elems.append((k, element))
+                                                    else:
+                                                        new_elems.append((k, element))
+                                            print(f'List value: {v}')
 
-                            event['new_elem'] = new_elems
-                            output_dict = {}
-                            for elem in event['new_elem']:
-                                key, value = elem
-                                if key in output_dict:
-                                    if isinstance(output_dict[key], list):
-                                        output_dict[key].append(value)
+                                event['new_elem'] = new_elems
+                                output_dict = {}
+                                for elem in event['new_elem']:
+                                    key, value = elem
+                                    if key in output_dict:
+                                        if isinstance(output_dict[key], list):
+                                            output_dict[key].append(value)
+                                        else:
+                                            output_dict[key] = [output_dict[key], value]
                                     else:
-                                        output_dict[key] = [output_dict[key], value]
-                                else:
-                                    output_dict[key] = value
+                                        output_dict[key] = value
+                                        
 
-                            output_dict['label'] = label_value
-                            event.clear()
-                            event.update(output_dict)
+                                output_dict['label'] = label_value
+                                print('output',output_dict)
+                                event.clear()
+                                event.update(output_dict)
 
-                            events_of_artworks.append(artwork_events)
-                            json_object["events"] = events_of_artworks
-                            json_object_with_index = {str(artwork_index): json_object}   
-                            final_output.append(json_object_with_index)
-                            artwork_index += 1
+                                events_of_artworks.append(artwork_events)
+                                print('events_of_artworks',events_of_artworks)
 
-                            # Increment the iteration counter
-                            iteration_counter += 1
-
-                            # Check if the counter is a multiple of 100
-                            if iteration_counter % 100 == 0:
-                                print(f"Last events added for iteration {iteration_counter}: {artwork_events}")
-                                
-                else:
+                else:  # This is the correct placement for the else block
                     json_object["events"] = ""
-                    json_object_with_index = {str(artwork_index): json_object}                             
+                    json_object_with_index = {str(artwork_index): json_object}
                     final_output.append(json_object_with_index)
-                    artwork_index +=1
-                    
+                    artwork_index += 1
 
             except Exception as e:
                 # Handle specific exceptions and log them for better debugging
@@ -374,11 +425,25 @@ def batch_extract_store_events(
 
             gc.collect()  # Perform garbage collection to release memory inside the loop
 
-    with open(event_output_file,'a',encoding='utf-8') as output_f:
+        # Move these lines outside the inner loop
+        json_object["events"] = events_of_artworks
+        json_object_with_index = {str(artwork_index): json_object}
+        final_output.append(json_object_with_index)
+        artwork_index += 1
+
+        # Increment the iteration counter
+        iteration_counter += 1
+
+        # Check if the counter is a multiple of 100
+        if iteration_counter % 100 == 0:
+            print(f"Last events added for iteration {iteration_counter}: {artwork_events}")
+
+    with open(event_output_file, 'a', encoding='utf-8') as output_f:
         for json_object in final_output:
-            output_f.write(json.dumps(json_object,ensure_ascii=False) + '\n')
+            output_f.write(json.dumps(json_object, ensure_ascii=False) + '\n')
 
     return artwork_index
+
 
 if __name__ == "__main__":  
     with open('datasets/final_db.json','r',encoding='utf-8') as f:

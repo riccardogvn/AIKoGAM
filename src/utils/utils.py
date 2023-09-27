@@ -26,7 +26,25 @@ from datetime import datetime
 logging.basicConfig(filename='error_log.log', level=logging.ERROR,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+def format_time(fractional_seconds):
+    # Convert fractional seconds to hours, minutes, and seconds
+    hours, remainder = divmod(int(fractional_seconds), 3600)
+    minutes, seconds = divmod(remainder, 60)
 
+    # Build the formatted string
+    time_components = []
+
+    if hours > 0:
+        time_components.append(f"{int(hours)}:{int(minutes):02}:{int(seconds):02} hours")
+    elif minutes > 0:
+        time_components.append(f"{int(minutes):02}:{int(seconds):02} minutes")
+    elif seconds > 0:
+        time_components.append(f"{int(seconds):02} seconds")
+    else:
+        time_components.append("0 seconds")
+
+    formatted_time = ' '.join(time_components)
+    return formatted_time
 
 
 def remove_dots(text):
@@ -165,6 +183,7 @@ def extract_named_entities(text, spacy_model, old_model, nlp):
     
     entities = {}
     for ent in nlp(text).ents:
+        
         # First, check SPACY_MAPPINGS for entity label mapping
         for k, v in SPACY_MAPPINGS.items():
             if ent.label_ in v:

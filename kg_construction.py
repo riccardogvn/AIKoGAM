@@ -7,28 +7,23 @@ from tqdm.notebook import tqdm
 
 def prepare_artwork_data(artwork):
     """
-    Propare the list of properties and values to be stored in a KG node of type 'artwork'.
+    Prepare the list of properties and values to be stored in a KG node of type 'artwork'.
 
     Parameters
     ----------
-    event : DICT
-        EVENT DICTIONARY.
+    artwork : dict
+        Artwork dictionary.
 
     Returns
     -------
-    proccessed_data : LIST
-        LIST OF PROPERTIES AND VALUES.
+    processed_data : list
+        List of properties and values.
 
     """    
-    properties = []
-    values = []
-    
-    for property_name in artwork.keys():
-        properties.append(property_name)
-        values.append(str(artwork[property_name]))
-        
-    proccessed_data = [properties, values]
-    return  proccessed_data
+    properties = list(artwork.keys())
+    values = [str(value) for value in artwork.values()]
+    processed_data = [properties, values]
+    return processed_data
 
 
 def prepare_event_data(event):
