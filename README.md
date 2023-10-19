@@ -1,6 +1,5 @@
 # AIKoGAM
-<a href="https://zenodo.org/doi/10.5281/zenodo.8184155"><img src="https://zenodo.org/badge/670696176.svg" alt="DOI"></a>
-
+<a href="https://doi.org/10.5281/zenodo.8184156"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.8184156.svg" alt="DOI"></a>
 An AI-driven Knowledge Graph of the Antiquities market: toward automatised methods to identify illicit trafficking networks
 The notebook allows artworks and their provenance data collection, the building of a Knowledge Graph derived from these data, through NLP enhanced event extraction, on Neo4j and the performing of different Network Analysis on the Graph.
 
