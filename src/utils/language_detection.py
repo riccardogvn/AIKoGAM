@@ -1,8 +1,8 @@
 import langid
 from langid.langid import LanguageIdentifier, model
-identifier = LanguageIdentifier.from_modelstring(model, norm_probs=True)
 from tqdm import tqdm
 from setup.config import SPACY_MODELS
+identifier = LanguageIdentifier.from_modelstring(model, norm_probs=True)
 
 def detect_language_batch(texts):
     """
