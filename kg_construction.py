@@ -168,7 +168,6 @@ def main():
                 '''
         db_connection.additionalQuery(query)
 
-    
    
     
 
