@@ -25,6 +25,6 @@ pip install -r requirements.txt
 ```
 jupyter lab
 ```
-2. From Jupyter Lab open the file AIKoGAM_notebook.ipynb
+2. From Jupyter Lab open the file AIKoGAM_notebook.ipynb and follow the notebook
 
 
