@@ -1,5 +1,4 @@
 #batch_detector.py
-
 import json
 from multiprocessing import Pool
 from src.utils.language_detection import detect_language_batch
