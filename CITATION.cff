@@ -1,0 +1,12 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Riccardo
+  given-names: Giovanelli
+  orcid: https://orcid.org/0000-0001-8884-8492
+- family-names: Arianna
+  given-names: Traviglia
+  orcid: https://orcid.org/0000-0002-4508-1540
+title: An AI-driven Knowledge Graph of the Antiquities market: toward automatised methods to identify illicit trafficking networks
+version: v.1.1.3-alpha
+date-released: 2023-10-19
