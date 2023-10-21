@@ -1665,3 +1665,32 @@ VOCABULARY = {"title_txt":"saleTitle",
 
               }
 
+
+RATE_LIMIT_SECONDS = 2  # Adjust this value based on the website's tolerance
+
+DEPGOOD = ['Sculpture and Works of Art',
+           'Chinese Ceramics & Works of Art',
+           'Indian, Himalayan & Southeast Asian Art',
+           'African, Oceanic & Pre-Columbian Art',
+           'Islamic and Indian Art',
+           'Greek Art',
+           'Antiquities']
+
+# Bonhams API configuration
+API_CONFIG = {
+    'appId': '2XGM7UFAZR',
+    'apiKey': '6379ef3eae57e5f83c65e88e457242d7',
+    'host': 'algolia.bonhams.com',
+}
+
+# Request headers
+HEADERS = {
+    'X-Algolia-Application-Id': API_CONFIG['appId'],
+    'X-Algolia-API-Key': API_CONFIG['apiKey'],
+    'Content-Type': 'application/json',
+}
+
+PARAMS = {
+    'AUCTION_LOTS_PER_PAGE': 1500,  # Adjust based on your needs
+    'AUCTIONS_PER_PAGE': 1500,
+}
