@@ -140,7 +140,7 @@ def clean_provenance(prov):
 def batch_extract_store_events(
         artworks,
         batch_size=100,
-        event_output_file='events/events___.txt',
+        event_output_file='events/events.txt',
         no_event_output_file='events/noevents.txt',
         artwork_index=0,
         

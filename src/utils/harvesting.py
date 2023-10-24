@@ -685,10 +685,12 @@ def collectBon(storeImage = False):
     aucPic = Pic('datasets/auctions_')
     nwPic = Pic('datasets/not_working')
     nwlPic = Pic('datasets/not_working_lots')
+    refPic = Pic('datasets/refined_data')
 
     auctions_ = aucPic.load()
     not_working = nwPic.load()
     not_working_lots = nwlPic.load()
+    refined_data = refPic.load()
 
     if auctions_ is None:
         auctions_ = dict()
@@ -696,6 +698,8 @@ def collectBon(storeImage = False):
         not_working = dict()
     if not_working_lots is None:
         not_working_lots = []
+
+
 
 
     for _,y in tqdm(enumerate(refined_data), desc=f'Scraping auction'):
