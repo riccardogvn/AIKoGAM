@@ -2,6 +2,7 @@
 import os  # Add this line for the 'os' module
 import re
 import logging
+import pickle
 # Set up logging
 logging.basicConfig(filename='error_log.log', level=logging.ERROR,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -228,6 +229,22 @@ def remove_dots(text):
 
     '''
     return text.replace('.','')
+
+class Pic:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def save(self, data):
+        with open(f'{self.file_path}.pickle', 'wb') as file:
+            pickle.dump(data, file)
+
+    def load(self):
+        if os.path.isfile(f'{self.file_path}.pickle'):
+            with open(f'{self.file_path}.pickle', 'rb') as file:
+                data = pickle.load(file)
+            return data
+        else:
+            return None
 
 if __name__ == "__main__":
     print(extract_year("between 1945 and 1972")[0])

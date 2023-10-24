@@ -9,6 +9,7 @@ from src.utils.utils import dict_hash
 from datetime import datetime
 from html import unescape
 import logging
+from src.utils.harvesting import format_date
 
 def map_sothebys_data(data):
     final_data = []
@@ -106,6 +107,119 @@ def map_sothebys_data(data):
             logging.error(f"Error occurred in map_sothebys_data: {str(e)}")
 
     return final_data
+
+def remap_bon(rawdata):
+    final_data = []
+    data = list(rawdata.values())
+    del rawdata
+    for item in tqdm(data, desc='Remapping Bonham\'s data'):
+        try:
+            auction_base = item['props']['pageProps']['auction']
+            auctionId = item['query']['auctionId']
+            auctionName = item["query"]['auctionName']
+            page = f'{item["props"]["baseUrl"]}/auction/{auctionId}/{auctionName}'
+            final_item = {
+                "saleTitle": auctionName,
+                "saleId": auctionId,
+                "saleUrl": page,
+                "saleSubtitle": auction_base['description'],
+                "saleStart": datetime.strptime(auction_base["daStartDate"], "%Y-%m-%dT%H:%M:%S").isoformat(),
+                "saleEnd": datetime.strptime(auction_base["daEndDate"], "%Y-%m-%dT%H:%M:%S").isoformat(),
+                "saleLocation": auction_base["sVenue"],
+            }
+            saleRef = f"Bonham's {final_item['saleLocation']} {format_date(final_item['saleStart'])}"
+            final_item['saleRef'] = saleRef
+
+            saleLots = []
+
+            for object in tqdm(list(item['lots'].values())):
+                lot = object['lot']
+                try:
+                    lotImageLocalPath = lot['local_image']
+                except KeyError:
+                    #logging.error(f"KeyError occurred in remap_christies_data: {str(lot)}")
+                    lotImageLocalPath = None  # Provide a default value or handle the absence of 'image' key
+                final_x = {
+                    'lotId': lot['iSaleLotNoUnique'],
+                    'lotNumber': lot['iSaleLotNo'],
+                    'lotUrl': f'{page}/lot/{lot["iSaleLotNo"]}',
+                    'lotTitle': lot['lot_title'],
+                    'lotSubtitle': '',
+                    'lotOther': '',
+                    'lotLastOwner': '',
+                    'lotImage': lot['images'][0]['image_url'],
+                    'lotImageLocalPath': lotImageLocalPath,
+                    'lotEstimateLow': lot['dEstimateLow'],
+                    'lotEstimateHigh': lot['dEstimateHigh'],
+                    'lotWithdrawn': '',
+                    'lotPrice': lot['dHammerPrice'],
+                    'lotPriceCurrency': lot['sCurrencySymbol3'],
+                    'lotSale': final_item['saleRef'],
+                    'lotReference': f'{final_item["saleRef"]} lot {lot["iSaleLotNo"]}',
+                }
+
+                try:
+                    final_x['lotDescription'] = {}
+                    for k, v in lot.items():
+                        if '<div ' in str(v):
+                            subdesc = {}
+                            pattern = r'<div\s+class=["\'](.*?)["\']>'
+                            val = BeautifulSoup(v, 'html.parser')
+
+                            matches = re.findall(pattern, str(val))
+                            for match in matches:
+                                # Replace 'Lot' in the class name and use it as the dictionary key
+                                key = f'{match.strip()}'
+                                # Find the <div> element with the specific class
+                                soup = val.find('div', {'class': match})
+                                if soup:
+                                    # Extract text content, preserving line breaks
+                                    result = '\n'.join(soup.stripped_strings)
+                                    subdesc = result.strip().replace('\n','. ')
+                                    final_x['lotDescription'][key] = subdesc
+                except:
+                    final_x['lotDescription'] = lot['sDesc']
+
+                try:
+                    extras = BeautifulSoup(lot['footnote_sExtraDesc'],'html.parser')
+                    sections = [i.text for i in extras.findAll('b')]
+                    for idx, section in enumerate(sections):
+                        subsections = {}
+                        soup = extras.find('b', text=section)
+                        cn = 0
+                        while soup is not None:
+                            count = idx + 1
+                            next_section = extras.find('b', text=sections[count]) if len(sections) > count else None
+
+                            if next_section and soup == next_section:
+                                pass
+                            else:
+                                subsection = soup.text.strip()
+                                if subsection:
+                                    if subsection != section.strip():
+                                        if len(subsection) > 3:
+                                            subsections[f'{section.lower()}_{cn}'] = subsection
+                                            cn += 1
+
+                            soup = soup.nextSibling
+
+                        final_x[f'lot{section.strip()}'] = subsections
+                except:
+                    pass
+
+
+                saleLots.append(final_x)
+            final_item['saleLots'] = saleLots
+            final_data.append(final_item)
+
+        except Exception as e:
+            logging.error(f"Error occurred in remap_christies_data: {str(e)}")
+        gc.collect()
+
+    return final_data
+
+
+
 
 def remap_christies_data(data):
     final_data = []

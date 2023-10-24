@@ -2,7 +2,7 @@
 from tqdm.notebook import tqdm
 from setup.config import PLOTS_FOLDER
 from src.utils.cleaning import normalize_name
-from networkx import nx
+import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
@@ -15,10 +15,11 @@ import numpy as np
 from unidecode import unidecode
 import pandas as pd
 from pandas.plotting import table
+xscale = 'log'
 
 
-
-def barDegree(graph,filename='total_degree_plot.png',num=20,figsize=(14,7),dpi=300,xscale='log',xlabel=f'Total Degree ({xscale} scale)',ylabel='Actor Name',title=f'Top {str(num)} Actors based on Total Degree'):
+def barDegree(graph,filename='total_degree_plot.png',num=20,figsize=(14,7),dpi=300,xscale='log',xlabel=f'Total Degree ({xscale} scale)',ylabel='Actor Name'):
+    title=f'Top {str(num)} Actors based on Total Degree'
 
     # Calculate total degree for each actor node
     actor_degrees = {node: graph.degree(node) for node in graph.nodes() if graph.nodes[node]['label'] == 'actor'}

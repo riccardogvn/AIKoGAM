@@ -1,4 +1,5 @@
-from src.utils.utils import openJson, saveJson,split_text
+#harvesting.py
+from src.utils.utils import openJson, saveJson,split_text,Pic
 from tqdm.notebook import tqdm
 import time
 import requests
@@ -11,6 +12,9 @@ from fake_useragent import UserAgent
 from datetime import datetime
 import random
 from typing import Dict, Any
+from setup.config import RATE_LIMIT_SECONDS, DEPGOOD, API_CONFIG,HEADERS,PARAMS
+# Example query parameters
+
 
 logging.basicConfig(filename='error_log.log', level=logging.ERROR,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -136,8 +140,13 @@ def format_date(input_date):
         date_obj = datetime.strptime(input_date, '%Y-%m-%dT%H:%M%z')
         formatted_date = date_obj.strftime('%d %B %Y')
         return formatted_date
-    except ValueError:
-        return "Invalid date format."
+    except:
+        try:
+            date_obj = datetime.strptime(input_date, '%Y-%m-%dT%H:%M:%S')
+            formatted_date = date_obj.strftime('%d %B %Y')
+            return formatted_date
+        except ValueError:
+            return "Invalid date format."
 
 def collect_sales(start_year, end_year, log_file, storeImage=False):
     #years_complete = openJson('years_complete.json')
@@ -646,6 +655,150 @@ def collectPAA(storeImage=False):
     return woas_db
 
 
+def parse_auction_data(response):
+    try:
+        result = BeautifulSoup(response.content, 'html.parser')
+        data = result.find('script', {'id': '__NEXT_DATA__'}).string
+        json_like_string = f'{{"data": {data}}}'
+        json_data = json.loads(json_like_string)
+        return json_data
+    except (AttributeError, KeyError, json.JSONDecodeError) as e:
+        logging.error(f"Error parsing data: {e}")
+        return None
+
+def api_req(url, headers=HEADERS, params=PARAMS, allow_redirects=False):
+    try:
+        if allow_redirects:
+            response = requests.get(url, headers=HEADERS, allow_redirects=True)
+        else:
+            response = requests.get(url, headers=HEADERS, params=PARAMS)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Request failed: {e}")
+        return None
+
+
+
+def collectBon(storeImage = False):
+    logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    aucPic = Pic('datasets/auctions_')
+    nwPic = Pic('datasets/not_working')
+    nwlPic = Pic('datasets/not_working_lots')
+
+    auctions_ = aucPic.load()
+    not_working = nwPic.load()
+    not_working_lots = nwlPic.load()
+
+    if auctions_ is None:
+        auctions_ = dict()
+    if not_working is None:
+        not_working = dict()
+    if not_working_lots is None:
+        not_working_lots = []
+
+
+    for _,y in tqdm(enumerate(refined_data), desc=f'Scraping auction'):
+        urlc = y['id']
+
+        # API endpoint URL (replace with the actual endpoint from the documentation)
+        base_url = 'https://www.bonhams.com/auction/'  # Replace with the actual endpoint
+        api_url = f"{base_url}{urlc}"
+
+        if api_url in auctions_:
+            print('already there')
+
+        elif api_url in not_working:
+            print('already there in not working')
+
+        else:
+            # Function to make API requests
+            response = api_req(api_url, headers=HEADERS, allow_redirects=True)
+            if response is None:
+                not_working[api_url] = urlc
+                nwPic.save(not_working)
+                continue
+
+            json_data = parse_auction_data(response)
+            if json_data is None:
+                not_working[api_url] = urlc
+                nwPic.save(not_working)
+                logging.error(f"data failed: {api_url}")
+                continue
+
+            auc = json_data['data']
+            auctions_[api_url] = auc
+            auctionLots = auctions_[api_url]['props']['pageProps']['lotData']['auctionLots']
+            auctions_[api_url]['depLots'] = []
+            auctions_[api_url]['lots'] = {}
+
+            for lot in auctionLots:
+                if 'name' in lot['department']:
+                    if lot['department']['name'] in DEPGOOD:
+                        auctions_[api_url]['depLots'].append(lot['lotId'])
+                else:
+                    auctions_[api_url]['depLots'].append(lot['lotId'])
+
+
+            for lot in tqdm(auctions_[api_url]['depLots'], desc=f'Scraping lots'):
+                api_url_lot = f"{api_url}/lot/{lot}"
+
+                response_lot = api_req(api_url_lot, headers=HEADERS, allow_redirects=True)
+
+                if response_lot is None:
+                    not_working_lots.append(api_url_lot)
+                    nwlPic.save(not_working_lots)
+                    continue
+
+                json_data = parse_auction_data(response_lot)
+                if json_data is None:
+                    not_working_lots.append(api_url_lot)
+                    nwlPic.save(not_working_lots)
+                    continue
+
+                auctions_[api_url]['lots'][lot] = json_data['data']['props']['pageProps']
+                if storeImage:
+                    try:
+                        images = auctions_[api_url]['lots'][lot]['images']
+                        if len(images) >= 1:
+                            image = images[0]
+                            directory = os.path.join("images", f"bon_{str(date_and_hour)}")
+                            os.makedirs(directory, exist_ok=True)
+                            auctions_[api_url]['lots'][lot]['local_image'] = saveImageBon(image, directory)
+                    except:
+                        auctions_[api_url]['lots'][lot]['local_image'] = None
+                        pass
+                else:
+                    auctions_[api_url]['lots'][lot]['local_image'] = None
+
+
+            aucPic.save(auctions_)
+
+            time.sleep(RATE_LIMIT_SECONDS)
+
+    with open('bon_raw.json','w') as f:
+        json.dump(auctions_,f)
+
+    return auctions_
+
+
+def saveImageBon(image_data, directory):
+    id_name = image_data['iImageNo']
+    url = image_data['image_url']
+    filePath = os.path.join(directory, id_name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    try:
+        response = requests.get(url, headers={'User-Agent': UserAgent().random.strip()})
+
+        with open(filePath, 'wb') as file:
+            file.write(response.content)
+        print('img_download_at ' + filePath)
+        return filePath
+    except:
+        print('didnot work with ' + url)
+        return None
 
 
 
