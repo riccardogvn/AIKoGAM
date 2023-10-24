@@ -2,6 +2,8 @@
 import os  # Add this line for the 'os' module
 import re
 import logging
+import spacy
+from spacy.cli.download import download
 import pickle
 # Set up logging
 logging.basicConfig(filename='error_log.log', level=logging.ERROR,

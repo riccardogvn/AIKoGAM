@@ -3,7 +3,7 @@
 import os
 import json
 import re
-
+import spacy
 from src.utils import utils
 from src.utils.transl import text_to_target_lang
 from spacy.cli.download import download
@@ -13,7 +13,7 @@ from fuzzywuzzy import fuzz
 from setup.config import SPACY_MODELS, similarity_threshold
 
 
-import spacy
+
 import re
 import gc  # Import the garbage collection module
 from collections import Counter
@@ -142,7 +142,8 @@ def batch_extract_store_events(
         batch_size=100,
         event_output_file='events/events___.txt',
         no_event_output_file='events/noevents.txt',
-        artwork_index=0
+        artwork_index=0,
+        
 ):
     """
     Extract events from a list of artwork provenances and store the events in JSON format.
